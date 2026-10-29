@@ -10,7 +10,7 @@ Meet **Maya**, the AI front desk for a dental practice. Patients chat with her t
 
 > **Live demo:** LIVE_URL
 >
-> It's on Render's free plan, so the first request after 15 minutes idle takes 30–60 s while the services wake up.
+> Web on Vercel, API on Render (always on). See [Deployment](#deployment).
 
 ### Run it locally
 
@@ -337,14 +337,21 @@ curl -X PUT http://localhost:4000/admin/llm \
 
 ## Deployment
 
-[`render.yaml`](render.yaml) is a Render Blueprint for both services. In the dashboard: **New → Blueprint →** pick the repo. Render asks for `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` on the first deploy, and generates `ADMIN_TOKEN` itself. Both services redeploy on every push to `main`. The API's health check is `/health`.
+The two apps run where each fits best. Both redeploy on every push to `main`.
 
-Free-plan caveats, which are fine for a demo:
+| App | Host | Why |
+|---|---|---|
+| Web (`apps/web`) | **Vercel** | Built for Next.js: fast, global, zero config |
+| API (`apps/api`) | **Render** (Starter + 1 GB persistent disk) | Needs an always-on process for streaming and multi-step turns, plus a disk for the SQLite file. Serverless functions have neither. |
 
-- The disk is ephemeral, so **the demo database re-seeds on each deploy or restart**. Bookings made in the demo don't survive a redeploy.
-- Services sleep after 15 minutes idle, so the **first request takes about 30–60 s**.
+**API on Render.** [`render.yaml`](render.yaml) is a Blueprint: **New → Blueprint →** pick the repo.
+- Enter `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `WEB_ORIGIN` (the Vercel URL). Render generates `ADMIN_TOKEN`.
+- The database lives on the persistent disk (`/var/data`), so bookings and staff alerts survive deploys and restarts.
+- The health check is `/health`.
 
-A paid instance with managed Postgres removes both.
+**Web on Vercel.** **Add New → Project →** import the repo, set **Root Directory** to `apps/web`, and add `NEXT_PUBLIC_API_URL` = the Render API URL. That's all it needs.
+
+**At scale** the SQLite file becomes managed Postgres (Supabase or Neon) with the same schema, plus Redis for the per-conversation lock (see [Prioritization and scope](#prioritization-and-scope)).
 
 ## Project structure
 
