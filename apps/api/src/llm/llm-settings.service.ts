@@ -102,7 +102,7 @@ export class LlmSettingsService {
     const overrides = this.loadOverrides();
     for (const section of Object.keys(patch) as Section[]) {
       if (!(section in SCHEMAS)) throw new ValidationError(`Unknown settings section "${section}"`);
-      const next = { ...(overrides[section] ?? {}), ...patch[section] };
+      const next: Record<string, unknown> = { ...overrides[section], ...patch[section] };
       for (const [k, v] of Object.entries(next)) if (v === undefined) delete next[k];
       overrides[section] = next;
     }
