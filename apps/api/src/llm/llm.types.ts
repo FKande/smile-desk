@@ -49,6 +49,10 @@ export interface TurnRequest {
   system: string;
   transcript: TranscriptItem[];
   tools: ToolSpec[];
+  /** Receives reply text as the model generates it. Setting it forces a streaming request. */
+  onTextDelta?: (text: string) => void;
+  /** Text streamed so far for this turn is void (the turn is being re-issued). */
+  onReset?: () => void;
 }
 
 export type StopReason = 'end' | 'tool_use' | 'max_tokens' | 'refusal' | 'other';
