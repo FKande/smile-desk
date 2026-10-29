@@ -1,0 +1,43 @@
+# Render Blueprint: deploys the API and the web app from this repo.
+# Dashboard → New → Blueprint → pick this repo. Render asks for the values marked
+# `sync: false` (the API keys) on first deploy; everything else is set here.
+# Both services redeploy automatically on every push to main.
+
+services:
+  - type: web
+    name: smile-desk-api
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm run build -w @smile-desk/api
+    startCommand: npm run start:prod -w @smile-desk/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ADMIN_TOKEN
+        generateValue: true
+      # Must match the web service's public URL (comma-separate several).
+      - key: WEB_ORIGIN
+        value: https://smile-desk-web.onrender.com
+      # The free plan's disk is ephemeral: the demo database re-seeds on each deploy or restart.
+      - key: DB_PATH
+        value: data/smile-desk.db
+
+  - type: web
+    name: smile-desk-web
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm run build -w @smile-desk/web
+    startCommand: npm run start -w @smile-desk/web
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # Inlined at build time; must be the API service's public URL.
+      - key: NEXT_PUBLIC_API_URL
+        value: https://smile-desk-api.onrender.com
