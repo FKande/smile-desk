@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { DomainError, ForbiddenError } from '../common/errors.js';
@@ -104,13 +105,16 @@ const toWhenSpec = (w: z.infer<typeof whenInput>): WhenSpec => ({
 });
 
 // ── Result shapes kept small: the model reads every token of them ──────────
-const slotOut = (s: OpenSlot) => ({ slot_id: s.slotId, time: s.label, with: s.providerName });
+// End times let the model reason about overlaps ("a 30-minute 8:30 checkup ends at 9:00").
+const endTime = (iso: string) => DateTime.fromISO(iso, { setZone: true }).toFormat('h:mm a');
+const slotOut = (s: OpenSlot) => ({ slot_id: s.slotId, time: s.label, ends: endTime(s.end), with: s.providerName });
 const apptOut = (a: AppointmentView) => ({
   appointment_id: a.appointmentId,
   patient_id: a.patientId,
   patient: a.patientName,
   type: a.typeLabel,
   time: a.label,
+  ends: endTime(a.end),
   with: a.providerName,
   status: a.status,
 });
