@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminTokenGuard } from '../common/admin-token.guard.js';
+import { ValidationError } from '../common/errors.js';
 import { NotificationsService } from './notifications.service.js';
 
 /** The office team's alert queue (emergencies, hand-offs, callbacks). */
@@ -10,7 +11,10 @@ export class StaffController {
 
   @Get()
   list(@Query('status') status?: string) {
-    return this.notifications.list(status === 'open' || status === 'acknowledged' ? status : undefined);
+    if (status !== undefined && status !== 'open' && status !== 'acknowledged') {
+      throw new ValidationError(`Unknown status "${status}" (use open or acknowledged, or omit it for all)`);
+    }
+    return this.notifications.list(status);
   }
 
   @Post(':id/acknowledge')

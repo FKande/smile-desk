@@ -107,6 +107,14 @@ describe('HTTP API (e2e)', () => {
     expect(JSON.stringify(res.body)).not.toContain('sk-ant-e2e-secret');
   });
 
+  it('staff routes reject unknown ids and filters with 404 / 400', async () => {
+    const server = app.getHttpServer();
+    const auth = { 'x-admin-token': 'test-admin-token' };
+    await request(server).post('/staff/notifications/ntf_nope/acknowledge').set(auth).expect(404);
+    await request(server).get('/staff/notifications?status=bogus').set(auth).expect(400);
+    await request(server).get('/staff/notifications?status=open').set(auth).expect(200);
+  });
+
   it('PUT /admin/llm validates and applies changes live', async () => {
     const server = app.getHttpServer();
     await request(server).put('/admin/llm').set('x-admin-token', 'test-admin-token').send({ anthropic: { maxTokens: 1 } }).expect(400);
