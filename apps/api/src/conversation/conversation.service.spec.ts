@@ -201,8 +201,76 @@ describe('ConversationService', () => {
     expect(JSON.parse(rows[0].content).context).toContain('Monday, November 2, 2026');
     expect(service.transcript(conversationId)).toEqual([
       { role: 'patient', text: 'hi there' },
-      { role: 'assistant', text: 'Hello!' },
+      { role: 'assistant', text: 'Hello!', appointments: [], escalated: false, degraded: false, at: expect.any(String) },
     ]);
+  });
+
+  describe('restoring the chat after a reload', () => {
+    const bookEmergency: Step[] = [
+      () => ({ text: "I'm so sorry. Let me find the soonest time.", calls: [{ name: 'verify_patient', input: SARAH }] }),
+      () => ({ calls: [{ name: 'find_open_slots', input: { appointment_type: 'emergency', when: { period: 'asap' }, limit: 1 } }] }),
+      (t) => ({
+        calls: [
+          {
+            name: 'book_appointments',
+            input: { bookings: [{ patient_id: 'pat_sarah_johnson', slot_id: lastResult(t, 'find_open_slots').options[0].slot_id, appointment_type: 'emergency', reason: 'Cracked molar, throbbing pain' }] },
+          },
+        ],
+      }),
+      () => ({ text: "You're booked, and the team knows." }),
+      () => ({ text: 'Anything else?' }),
+    ];
+
+    it("gives a booked turn's entry its cards, with reason and duration", async () => {
+      const { service } = setup(bookEmergency);
+      const reply = await service.handleMessage({ message: 'I cracked a tooth' });
+
+      expect(reply.appointments).toEqual([
+        expect.objectContaining({ action: 'booked', typeLabel: 'Emergency visit', reason: 'Cracked molar, throbbing pain', durationMinutes: 30 }),
+      ]);
+      const [, assistant] = service.transcript(reply.conversationId);
+      expect(assistant).toMatchObject({ role: 'assistant', appointments: reply.appointments, escalated: true, degraded: false });
+    });
+
+    it('restores a multi-step turn as one entry with the reply the patient saw', async () => {
+      const { service } = setup(bookEmergency);
+      const reply = await service.handleMessage({ message: 'I cracked a tooth' });
+
+      const history = service.transcript(reply.conversationId);
+      expect(history.map((e) => e.role)).toEqual(['patient', 'assistant']);
+      expect(history[1].text).toBe("I'm so sorry. Let me find the soonest time.\n\nYou're booked, and the team knows.");
+      expect(history[1].text).toBe(reply.reply);
+    });
+
+    it('keeps the escalated flag on later turns, with no new cards', async () => {
+      const { service } = setup(bookEmergency);
+      const first = await service.handleMessage({ message: 'I cracked a tooth' });
+      await service.handleMessage({ conversationId: first.conversationId, message: 'thanks' });
+
+      const history = service.transcript(first.conversationId);
+      expect(history.slice(2)).toEqual([
+        { role: 'patient', text: 'thanks' },
+        expect.objectContaining({ role: 'assistant', text: 'Anything else?', appointments: [], escalated: true }),
+      ]);
+    });
+
+    it('restores a degraded turn with its flag', async () => {
+      const { service } = setup([() => new Error('down')], [() => new Error('also down')]);
+      const reply = await service.handleMessage({ message: 'hello?' });
+      expect(service.transcript(reply.conversationId)[1]).toMatchObject({ text: reply.reply, degraded: true, escalated: true });
+    });
+
+    it('falls back to one entry per assistant text for turns stored before outcomes existed', async () => {
+      const { service, ctx } = setup(bookEmergency);
+      const { conversationId } = await service.handleMessage({ message: 'I cracked a tooth' });
+      ctx.db.prepare('DELETE FROM turn_outcomes').run();
+
+      expect(service.transcript(conversationId)).toEqual([
+        { role: 'patient', text: 'I cracked a tooth' },
+        { role: 'assistant', text: "I'm so sorry. Let me find the soonest time." },
+        { role: 'assistant', text: "You're booked, and the team knows." },
+      ]);
+    });
   });
 
   describe('streaming events', () => {

@@ -9,7 +9,7 @@ import { LlmSettingsService } from '../llm/llm-settings.service.js';
 import type { ToolResult, TranscriptItem } from '../llm/llm.types.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PatientsService } from '../patients/patients.service.js';
-import { PRACTICE } from '../practice/practice.js';
+import { APPOINTMENT_TYPES, PRACTICE } from '../practice/practice.js';
 import type { AppointmentView } from '../scheduling/scheduling.service.js';
 import { SchedulingService } from '../scheduling/scheduling.service.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';
@@ -25,6 +25,9 @@ export interface AppointmentCard {
   label: string;
   providerName: string;
   status: AppointmentView['status'];
+  /** The patient's reason, e.g. the emergency summary staff were sent. */
+  reason: string | null;
+  durationMinutes: number;
 }
 
 export interface ChatReply {
@@ -36,6 +39,26 @@ export interface ChatReply {
   /** The model was unreachable and a safe fallback reply was sent instead. */
   degraded: boolean;
 }
+
+/** What a finished turn showed the patient; stored per turn so a reload can show it again. */
+type TurnOutcome = Pick<ChatReply, 'reply' | 'appointments' | 'escalated' | 'degraded'>;
+
+/** One bubble of the visible chat. Assistant entries of finished turns carry what that turn showed. */
+export type TranscriptEntry =
+  | { role: 'patient'; text: string }
+  | ({ role: 'assistant'; text: string; at?: string } & Partial<Omit<TurnOutcome, 'reply'>>);
+
+const toCard = ({ action, appointment: a }: ToolSession['changedAppointments'][number]): AppointmentCard => ({
+  action,
+  appointmentId: a.appointmentId,
+  patientName: a.patientName,
+  typeLabel: a.typeLabel,
+  label: a.label,
+  providerName: a.providerName,
+  status: a.status,
+  reason: a.reason,
+  durationMinutes: APPOINTMENT_TYPES[a.type].durationMinutes,
+});
 
 const REPLIES = {
   unavailable: `I'm sorry, I'm having trouble on my end right now. I've asked our team to reach out to you. If it's urgent, please call us at ${PRACTICE.phone}.`,
@@ -123,16 +146,48 @@ export class ConversationService {
       .run(`fb_${randomUUID()}`, conversationId, rating, comment?.trim().slice(0, 1000) || null, toUtcIso(this.clock.now()));
   }
 
-  /** The visible chat (patient and assistant text only), for restoring a session in the UI. */
-  transcript(conversationId: string): { role: 'patient' | 'assistant'; text: string }[] {
+  /**
+   * The visible chat, for restoring a session in the UI: one assistant entry per finished
+   * turn, with the joined reply and the cards and flags it streamed. Turns without a stored
+   * outcome (older ones, or one still running) fall back to each assistant text on its own.
+   */
+  transcript(conversationId: string): TranscriptEntry[] {
     this.getConversation(conversationId);
-    return this.loadItems(conversationId, Number.MAX_SAFE_INTEGER).flatMap((item): { role: 'patient' | 'assistant'; text: string }[] =>
-      item.kind === 'user'
-        ? [{ role: 'patient' as const, text: item.text }]
-        : item.kind === 'assistant' && item.text
-          ? [{ role: 'assistant' as const, text: item.text }]
-          : [],
+    const rows = this.db
+      .prepare('SELECT id, content FROM messages WHERE conversation_id = ? ORDER BY rowid')
+      .all(conversationId) as { id: string; content: string }[];
+    const outcomes = new Map(
+      (this.db.prepare('SELECT message_id, payload, created_at FROM turn_outcomes WHERE conversation_id = ?').all(conversationId) as {
+        message_id: string;
+        payload: string;
+        created_at: string;
+      }[]).map((r) => [r.message_id, { ...(JSON.parse(r.payload) as TurnOutcome), at: r.created_at }]),
     );
+
+    const entries: TranscriptEntry[] = [];
+    let turn: { outcome?: TurnOutcome & { at: string }; texts: string[] } | null = null;
+    const closeTurn = () => {
+      if (!turn) return;
+      if (turn.outcome) {
+        const { reply, ...shown } = turn.outcome;
+        entries.push({ role: 'assistant', text: reply, ...shown });
+      } else {
+        entries.push(...turn.texts.map((text) => ({ role: 'assistant' as const, text })));
+      }
+    };
+    for (const row of rows) {
+      const item = JSON.parse(row.content) as TranscriptItem;
+      if (item.kind === 'user') {
+        closeTurn();
+        entries.push({ role: 'patient', text: item.text });
+        turn = { outcome: outcomes.get(row.id), texts: [] };
+      } else if (item.kind === 'assistant' && item.text) {
+        // Assistant text before any patient message can't happen today; keep it rather than drop it.
+        (turn ??= { texts: [] }).texts.push(item.text);
+      }
+    }
+    closeTurn();
+    return entries;
   }
 
   private async runTurn(conversationId: string, conversation: ConversationRow, message: string, events: ChatEvents): Promise<ChatReply> {
@@ -144,7 +199,7 @@ export class ConversationService {
       changedAppointments: [],
     };
 
-    this.append(conversationId, { kind: 'user', text: message, context: this.contextBlock(session.actorId) });
+    const turnId = this.append(conversationId, { kind: 'user', text: message, context: this.contextBlock(session.actorId) });
     const transcript = this.loadItems(conversationId, historyLimit);
     // Text from every model step this turn, in order: the reply is what the patient watched stream.
     const texts: string[] = [];
@@ -207,25 +262,18 @@ export class ConversationService {
       this.append(conversationId, fallback);
     }
 
-    this.db
-      .prepare('UPDATE conversations SET patient_id = ?, last_message_at = ?, outcome = ? WHERE id = ?')
-      .run(session.actorId, toUtcIso(this.clock.now()), session.escalated ? 'escalated' : conversation.outcome, conversationId);
+    const outcome: TurnOutcome = { reply, appointments: session.changedAppointments.map(toCard), escalated: session.escalated, degraded };
+    const now = toUtcIso(this.clock.now());
+    this.db.transaction(() => {
+      this.db
+        .prepare('UPDATE conversations SET patient_id = ?, last_message_at = ?, outcome = ? WHERE id = ?')
+        .run(session.actorId, now, session.escalated ? 'escalated' : conversation.outcome, conversationId);
+      this.db
+        .prepare('INSERT INTO turn_outcomes (id, conversation_id, message_id, payload, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(`turn_${randomUUID()}`, conversationId, turnId, JSON.stringify(outcome), now);
+    })();
 
-    return {
-      conversationId,
-      reply,
-      appointments: session.changedAppointments.map(({ action, appointment: a }) => ({
-        action,
-        appointmentId: a.appointmentId,
-        patientName: a.patientName,
-        typeLabel: a.typeLabel,
-        label: a.label,
-        providerName: a.providerName,
-        status: a.status,
-      })),
-      escalated: session.escalated,
-      degraded,
-    };
+    return { conversationId, ...outcome };
   }
 
   private runTool(name: string, input: Record<string, unknown>, session: ToolSession): { output: string; isError: boolean } {
@@ -278,10 +326,13 @@ export class ConversationService {
     return row;
   }
 
-  private append(conversationId: string, item: TranscriptItem): void {
+  /** Adds one transcript item and returns its message id. */
+  private append(conversationId: string, item: TranscriptItem): string {
+    const id = `msg_${randomUUID()}`;
     this.db
       .prepare('INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(`msg_${randomUUID()}`, conversationId, ROLE[item.kind], JSON.stringify(item), toUtcIso(this.clock.now()));
+      .run(id, conversationId, ROLE[item.kind], JSON.stringify(item), toUtcIso(this.clock.now()));
+    return id;
   }
 
   /** The most recent `limit` items, trimmed so the window starts at a patient message. */

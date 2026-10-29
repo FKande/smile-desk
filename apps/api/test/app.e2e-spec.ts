@@ -81,9 +81,10 @@ describe('HTTP API (e2e)', () => {
 
     // The streamed conversation is a normal conversation afterwards.
     const history = await request(app.getHttpServer()).get(`/chat/${done.conversationId}/messages`).expect(200);
+    // ...and its history restores the same reply, cards and flags the stream ended with.
     expect(history.body).toEqual([
       { role: 'patient', text: 'hello' },
-      { role: 'assistant', text: "Hi, I'm Maya." },
+      { role: 'assistant', text: done.reply, appointments: done.appointments, escalated: done.escalated, degraded: done.degraded, at: expect.any(String) },
     ]);
   });
 
