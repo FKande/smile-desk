@@ -74,5 +74,12 @@ describe('PatientsService', () => {
       expect(ctx.patients.canActFor('pat_maria_garcia', kid.id)).toBe(true);
       expect(ctx.patients.canActFor('pat_sarah_johnson', kid.id)).toBe(false);
     });
+
+    it('lets adults act for their household, but not children for their parents', () => {
+      expect(ctx.patients.canActFor('pat_michael_johnson', 'pat_sarah_johnson')).toBe(true); // spouse
+      expect(ctx.patients.canActFor('pat_michael_johnson', 'pat_emma_johnson')).toBe(true); // parent, not the listed guardian
+      expect(ctx.patients.canActFor('pat_emma_johnson', 'pat_sarah_johnson')).toBe(false); // child → parent
+      expect(ctx.patients.canActFor('pat_emma_johnson', 'pat_liam_johnson')).toBe(false); // child → sibling
+    });
   });
 });
