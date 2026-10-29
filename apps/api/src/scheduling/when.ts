@@ -31,6 +31,8 @@ export interface WhenSpec {
   /** "in 3 days" → that day; "in 2 weeks" → that whole week. */
   inDays?: number;
   inWeeks?: number;
+  /** "in 6 months" → that whole calendar month (a 6-month follow-up). Combines with portion. */
+  inMonths?: number;
   /** An exact date the patient gave, YYYY-MM-DD. */
   date?: string;
   /** An explicit range, YYYY-MM-DD. `to` is inclusive and defaults to two weeks after `from`. */
@@ -55,9 +57,9 @@ export function resolveWhen(spec: WhenSpec, now: DateTime): ResolvedWindow {
   const today = local.startOf('day');
   const thisWeek = today.startOf('week'); // ISO weeks start Monday
   // `phrase` is informational only; every other field narrows the window.
-  const anchors = [spec.date, spec.from, spec.period, spec.month, spec.inDays, spec.inWeeks].filter((v) => v !== undefined);
+  const anchors = [spec.date, spec.from, spec.period, spec.month, spec.inDays, spec.inWeeks, spec.inMonths].filter((v) => v !== undefined);
   if (anchors.length > 1) {
-    throw new ValidationError('Use one of date, from/to, period, month, inDays or inWeeks, not several');
+    throw new ValidationError('Use one of date, from/to, period, month, inDays, inWeeks or inMonths, not several');
   }
 
   const result = (from: DateTime, to: DateTime, description: string): ResolvedWindow => {
@@ -92,13 +94,18 @@ export function resolveWhen(spec: WhenSpec, now: DateTime): ResolvedWindow {
   }
 
   if (spec.inDays !== undefined) {
-    const d = today.plus({ days: positive(spec.inDays, 'inDays') });
+    const d = today.plus({ days: positive(spec.inDays, 'inDays', 26) });
     return oneDay(d, `in ${spec.inDays} day${spec.inDays === 1 ? '' : 's'}`);
   }
 
   if (spec.inWeeks !== undefined) {
-    const weekStart = today.plus({ weeks: positive(spec.inWeeks, 'inWeeks') }).startOf('week');
+    const weekStart = today.plus({ weeks: positive(spec.inWeeks, 'inWeeks', 31) }).startOf('week');
     return weekPortion(weekStart, `the week of ${weekStart.toFormat('LLL d')}`);
+  }
+
+  if (spec.inMonths !== undefined) {
+    const start = today.startOf('month').plus({ months: positive(spec.inMonths, 'inMonths', 7) });
+    return monthPortion(start, `${portionLabel(spec.portion)}${start.toFormat('LLLL')}`);
   }
 
   switch (spec.period) {
@@ -156,8 +163,8 @@ function parseDate(value: string, field: string): DateTime {
   return d.startOf('day');
 }
 
-function positive(n: number, field: string): number {
-  if (!Number.isInteger(n) || n < 0 || n > 26) throw new ValidationError(`${field} must be a whole number from 0 to 26`);
+function positive(n: number, field: string, max: number): number {
+  if (!Number.isInteger(n) || n < 0 || n > max) throw new ValidationError(`${field} must be a whole number from 0 to ${max}`);
   return n;
 }
 
