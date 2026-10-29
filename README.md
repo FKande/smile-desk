@@ -191,5 +191,3 @@ apps/web/src/      app/ (chat, /staff, /design-system), components/, lib/, style
 | Backend | Node 22+, NestJS 12, Zod 4, Luxon; SQLite (better-sqlite3, WAL), raw SQL |
 | LLM | Anthropic Messages API (default), OpenAI Responses API (fallback) |
 | Tests, hosting | Vitest + Supertest, `node:test`, eval runner; Vercel (web), Render (API) |
-
-**Built with AI assistance:** AI assistants helped write and review code, tests and docs; I made the architecture, scope and design calls and verified every flow against the real models.
