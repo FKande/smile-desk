@@ -8,6 +8,7 @@ import {
   ComposerDemo,
   ComposerStates,
   ConversationDemo,
+  DevicePreview,
   EmergencyDemo,
   FailedMessageDemo,
   FamilyDemo,
@@ -32,19 +33,21 @@ export default function Page() {
       <Section
         id="conversation"
         title="Full conversation"
-        description="A new patient shares their details, turns down the first set of times, gets a vague date resolved and books. Next to it, a family booked back to back and an emergency handed to staff. Type in the first composer to see a live send and typing indicator."
+        description="A new patient shares their details, turns down the first set of times, gets a vague date resolved and books. Below it, a family booked back to back and an emergency handed to staff. Type in the first composer to see a live send and typing indicator. Switch the preview to judge the same conversation on a phone or a desktop."
       >
-        <Stage title="New patient, first booking" source={`${dir}/*`} schemes="current" className="py-8">
-          <ConversationDemo />
-        </Stage>
-        <div className="grid gap-6 2xl:grid-cols-2">
-          <Stage title="Family, back to back" schemes="current" className="py-8">
-            <FamilyDemo />
+        <DevicePreview>
+          <Stage title="New patient, first booking" source={`${dir}/*`} schemes="current" padded={false} className="py-8 sm:px-6">
+            <ConversationDemo />
           </Stage>
-          <Stage title="Emergency" schemes="current" className="py-8">
-            <EmergencyDemo />
-          </Stage>
-        </div>
+          <div className="grid gap-6 2xl:grid-cols-2">
+            <Stage title="Family, back to back" schemes="current" padded={false} className="py-8 sm:px-6">
+              <FamilyDemo />
+            </Stage>
+            <Stage title="Emergency" schemes="current" padded={false} className="py-8 sm:px-6">
+              <EmergencyDemo />
+            </Stage>
+          </div>
+        </DevicePreview>
         <Note title="Why the conversation looks this way">
           The assistant restates what it understood (&quot;by early next week I&apos;m reading Monday to
           Wednesday&quot;) before offering times, so a wrong guess is caught in one turn. Every set of times can be

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { createContext, use, useRef, useState, type ReactNode } from "react";
 import { AppointmentCard } from "@/components/chat/AppointmentCard";
 import { ChatHeader } from "@/components/chat/ChatHeader";
 import { Composer } from "@/components/chat/Composer";
@@ -12,6 +12,8 @@ import { SlotPicker } from "@/components/chat/SlotPicker";
 import { StaffNotice } from "@/components/chat/StaffNotice";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { TextSizeToggle, ThemeToggle } from "@/components/theme/PreferenceControls";
+import { SegmentedControl, type SegmentedOption } from "@/components/ui/SegmentedControl";
+import { cn } from "@/lib/cn";
 import { earlyNextWeek, family, familyBlocks, greetingReplies, laterInWeek, visitReplies } from "./_data";
 
 /* Stateful demos for /design-system/chat. Everything here is assembled from
@@ -19,20 +21,56 @@ import { earlyNextWeek, family, familyBlocks, greetingReplies, laterInWeek, visi
 
 const noop = () => {};
 
-/* ---------- Phone frame ---------- */
+/* ---------- Device preview ---------- */
 
-/** A mobile-width chat column: header, thread, composer. */
+/* The conversation demos render in a phone frame or a desktop window, so the
+ * same components can be judged at both sizes without resizing the browser.
+ * Phone: a 25rem column. Desktop: a wide window whose header spans the full
+ * width while the thread and composer sit in a centered reading column of
+ * --chat-max-width, which is how the real chat screen lays out on a laptop. */
+type Device = "phone" | "desktop";
+
+const DeviceContext = createContext<Device>("phone");
+
+const deviceOptions: SegmentedOption<Device>[] = [
+  { value: "phone", label: "Phone", icon: "smartphone" },
+  { value: "desktop", label: "Desktop", icon: "monitor" },
+];
+
+export function DevicePreview({ children }: { children: ReactNode }) {
+  const [device, setDevice] = useState<Device>("phone");
+  return (
+    <DeviceContext value={device}>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-label font-semibold text-secondary">Preview as</span>
+        <SegmentedControl legend="Preview device" options={deviceOptions} value={device} onChange={setDevice} />
+      </div>
+      {children}
+    </DeviceContext>
+  );
+}
+
+/** A chat window: header, thread, composer, sized by the active preview device. */
 function Phone({ label, children, footer }: { label: string; children: ReactNode; footer?: ReactNode }) {
+  const device = use(DeviceContext);
+  const desktop = device === "desktop";
+  const column = desktop ? "mx-auto flex w-full max-w-(--chat-max-width) min-h-0 flex-1 flex-col" : "contents";
   return (
     <div
       aria-label={label}
       role="region"
-      className="mx-auto flex h-[46rem] w-full max-w-[25rem] flex-col overflow-hidden rounded-2xl border border-default bg-canvas shadow-modal"
+      data-device={device}
+      className={cn(
+        "mx-auto flex h-[46rem] w-full flex-col overflow-hidden border border-default bg-canvas shadow-modal",
+        desktop ? "max-w-5xl rounded-xl" : "max-w-[25rem] rounded-2xl",
+      )}
     >
       <ChatHeader hours="Open today 8 AM – 6 PM" onTalkToPerson={noop} />
-      {children}
+      <div className={column}>{children}</div>
       <div className="border-t border-subtle bg-surface px-3 pt-3">
-        {footer ?? <Composer onSend={noop} hint="Enter to send, Shift + Enter for a new line" />}
+        <div className={desktop ? "mx-auto w-full max-w-(--chat-max-width)" : undefined}>
+          {footer ?? <Composer onSend={noop} hint="Enter to send, Shift + Enter for a new line" />}
+        </div>
       </div>
     </div>
   );

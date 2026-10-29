@@ -14,7 +14,7 @@ export function DocShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[17rem_1fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
       <a
         href="#content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-(--z-skip-link) focus:rounded-md focus:bg-surface focus:px-4 focus:py-2"
@@ -22,7 +22,7 @@ export function DocShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
 
-      <aside className="border-b border-subtle bg-surface md:sticky md:top-0 md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r">
+      <aside className="border-b border-subtle bg-surface lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <div className="flex flex-col gap-6 p-5">
           <Link href="/design-system" className="flex items-center gap-2.5 rounded-md focused:focus-ring">
             <span className="grid size-9 place-items-center rounded-lg bg-brand-solid text-on-brand">
@@ -35,7 +35,7 @@ export function DocShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav aria-label="Design system">
-            <ul className="flex flex-wrap gap-1 md:flex-col">
+            <ul className="flex flex-wrap gap-1 lg:flex-col">
               {NAV.map((entry) => {
                 const active = pathname === entry.href;
                 return (
@@ -52,7 +52,7 @@ export function DocShell({ children }: { children: ReactNode }) {
                       {entry.label}
                     </Link>
                     {active ? (
-                      <ul className="mb-2 mt-1 hidden flex-col border-l border-subtle pl-3 md:ml-3 md:flex">
+                      <ul className="mb-2 mt-1 hidden flex-col border-l border-subtle pl-3 lg:ml-3 lg:flex">
                         {entry.anchors.map((anchor) => (
                           <li key={anchor.id}>
                             <a
@@ -71,11 +71,16 @@ export function DocShell({ children }: { children: ReactNode }) {
             </ul>
           </nav>
 
-          <div className="flex flex-col gap-3 border-t border-subtle pt-5">
-            <span className="text-caption font-semibold text-muted">Theme</span>
-            <ThemeToggle className="self-start" />
-            <span className="text-caption font-semibold text-muted">Text size</span>
-            <TextSizeToggle className="self-start" />
+          {/* Side by side on phones so the header stays short; stacked in the sidebar. */}
+          <div className="flex flex-wrap gap-x-6 gap-y-3 border-t border-subtle pt-5 lg:flex-col">
+            <div className="flex flex-col gap-2">
+              <span className="text-caption font-semibold text-muted">Theme</span>
+              <ThemeToggle className="self-start" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-caption font-semibold text-muted">Text size</span>
+              <TextSizeToggle className="self-start" />
+            </div>
           </div>
         </div>
       </aside>

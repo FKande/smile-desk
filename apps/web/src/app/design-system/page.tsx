@@ -100,12 +100,30 @@ const layers = [
   ["--z-skip-link", "80", "Skip link always wins"],
 ] as const;
 
+const responsiveBreakpoints = [
+  ["base", "< 640px", "Phones: chat is full screen, one column everywhere"],
+  ["sm", "640px", "Large phones and small tablets: segment icons return"],
+  ["md", "768px", "Tablets: still one column, with more breathing room"],
+  ["lg", "1024px", "Laptops: catalog sidebar and two-column layouts"],
+  ["xl", "1280px", "Desktops: light and dark panes side by side"],
+] as const;
+
+const responsiveRules = [
+  "Mobile-first utilities; larger screens add, never subtract.",
+  "The chat is a single reading column capped at --chat-max-width (46rem); on desktop it centers under a full-width header.",
+  "Components adapt to their container, not the viewport, where it matters: the chat header collapses “Talk to a person” to an icon below 28rem of its own width.",
+  "Hover styles only apply on devices that can hover, so taps never leave a stuck highlight.",
+  "The composer pads for the iPhone home indicator (safe-area-inset-bottom).",
+  "Nothing scrolls the page sideways: wide tables scroll inside their own box, chips and slots wrap, segmented controls drop icons on phones.",
+  "Sizes are rem, so the text-size setting and browser zoom reflow the layout instead of overflowing it.",
+] as const;
+
 function TokenRow({ token, note, swatch }: { token: string; note: string; swatch: ReactNode }) {
   return (
     <li className="flex items-center gap-3">
       {swatch}
       <span className="flex min-w-0 flex-col">
-        <code className="font-mono text-caption text-default">{token}</code>
+        <code className="break-words font-mono text-caption text-default">{token}</code>
         <span className="text-caption text-muted">{note}</span>
       </span>
     </li>
@@ -126,7 +144,7 @@ export default function FoundationsPage() {
         title="Token tiers"
         description="Three layers, each pointing only at the one below it. Changing a brand color is a tier-1 edit; retheming is a tier-2 edit; restyling one component is a tier-3 edit."
       >
-        <ol className="grid gap-3 lg:grid-cols-3">
+        <ol className="grid gap-3 xl:grid-cols-3 [&>*]:min-w-0">
           {[
             [
               "1 · Primitives",
@@ -151,7 +169,7 @@ export default function FoundationsPage() {
               <span className="text-title font-semibold">{title}</span>
               <code className="font-mono text-caption text-muted">{file}</code>
               <p className="text-body-sm text-secondary">{body}</p>
-              <code className="mt-auto w-fit rounded-sm bg-brand-subtle px-2 py-0.5 font-mono text-caption text-brand-text">
+              <code className="mt-auto w-fit max-w-full break-all rounded-sm bg-brand-subtle px-2 py-0.5 font-mono text-caption text-brand-text">
                 {example}
               </code>
             </li>
@@ -222,7 +240,7 @@ export default function FoundationsPage() {
         description="The roles components are allowed to use. Each pane below pins one scheme, so you can compare light and dark side by side."
       >
         <Stage title="Surfaces, text and borders">
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-6 pt-6">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(15rem,100%),1fr))] gap-6 pt-6">
             <ul className="flex flex-col gap-3">
               {surfaces.map(([token, note]) => (
                 <TokenRow
@@ -344,9 +362,9 @@ export default function FoundationsPage() {
       >
         <div className="flex flex-col divide-y divide-subtle rounded-xl border border-subtle bg-surface">
           {typeRoles.map(([cls, size, role, sample]) => (
-            <div key={cls} className="grid gap-2 p-5 md:grid-cols-[14rem_1fr] md:items-baseline">
+            <div key={cls} className="grid gap-2 p-5 lg:grid-cols-[14rem_1fr] lg:items-baseline">
               <div className="flex flex-col">
-                <code className="font-mono text-caption text-default">.{cls}</code>
+                <code className="break-words font-mono text-caption text-default">.{cls}</code>
                 <span className="text-caption text-muted">
                   {size} · {role}
                 </span>
@@ -379,7 +397,7 @@ export default function FoundationsPage() {
           <div className="grid gap-5 pt-6 sm:grid-cols-2">
             {elevations.map(([cls, note]) => (
               <div key={cls} className={`flex flex-col gap-1 rounded-lg border border-subtle bg-surface p-4 ${cls}`}>
-                <code className="font-mono text-caption text-default">{cls}</code>
+                <code className="break-words font-mono text-caption text-default">{cls}</code>
                 <span className="text-caption text-muted">{note}</span>
               </div>
             ))}
@@ -392,13 +410,13 @@ export default function FoundationsPage() {
         title="Motion"
         description="Motion confirms an action or shows that something is working; it never decorates. One-shot transitions stay under 400ms; loops get their own lane. With reduced motion turned on, every animation collapses and loaders fall back to text."
       >
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
           <div className="flex flex-col gap-3 rounded-xl border border-subtle bg-surface p-5">
             <span className="text-title font-semibold">Durations</span>
             {durations.map(([token, value, note]) => (
               <div key={token} className="group flex flex-col gap-1.5">
                 <span className="flex justify-between gap-2">
-                  <code className="font-mono text-caption text-default">{token}</code>
+                  <code className="break-words font-mono text-caption text-default">{token}</code>
                   <span className="text-caption text-muted">{value}</span>
                 </span>
                 <span className="text-caption text-muted">{note}</span>
@@ -410,7 +428,7 @@ export default function FoundationsPage() {
             {loops.map(([token, value, note]) => (
               <div key={token} className="flex flex-col gap-1">
                 <span className="flex justify-between gap-2">
-                  <code className="font-mono text-caption text-default">{token}</code>
+                  <code className="break-words font-mono text-caption text-default">{token}</code>
                   <span className="text-caption text-muted">{value}</span>
                 </span>
                 <span className="text-caption text-muted">{note}</span>
@@ -421,7 +439,7 @@ export default function FoundationsPage() {
             <span className="text-title font-semibold">Easing</span>
             {easings.map(([cls, note]) => (
               <div key={cls} className="flex flex-col gap-1">
-                <code className="font-mono text-caption text-default">{cls}</code>
+                <code className="break-words font-mono text-caption text-default">{cls}</code>
                 <span className="text-caption text-muted">{note}</span>
               </div>
             ))}
@@ -430,7 +448,7 @@ export default function FoundationsPage() {
       </Section>
 
       <Section id="layers" title="Sizing & layers" description="Control heights are rem, so they grow with the text-size setting. 44px is our floor for anything tappable, well above the WCAG 2.2 AA minimum of 24px, because tremor and reduced dexterity are common among patients.">
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
           <div className="flex flex-col gap-4 rounded-xl border border-subtle bg-surface p-5">
             <span className="text-title font-semibold">Control heights</span>
             {controlHeights.map(([token, value, note]) => (
@@ -439,8 +457,8 @@ export default function FoundationsPage() {
                   className="w-20 shrink-0 rounded-(--control-radius) border border-(color:--brand-border) bg-brand-subtle"
                   style={{ height: `var(${token})` }}
                 />
-                <span className="flex flex-col">
-                  <code className="font-mono text-caption text-default">
+                <span className="flex min-w-0 flex-col">
+                  <code className="break-words font-mono text-caption text-default">
                     {token} · {value}
                   </code>
                   <span className="text-caption text-muted">{note}</span>
@@ -452,11 +470,40 @@ export default function FoundationsPage() {
             <span className="text-title font-semibold">Z-index registry</span>
             <ul className="flex flex-col gap-2">
               {layers.map(([token, value, note]) => (
-                <li key={token} className="grid grid-cols-[9rem_2.5rem_1fr] items-baseline gap-2">
-                  <code className="font-mono text-caption text-default">{token}</code>
+                <li key={token} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <code className="break-words font-mono text-caption text-default">{token}</code>
                   <span className="text-caption text-muted">{value}</span>
                   <span className="text-caption text-muted">{note}</span>
                 </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        id="responsive"
+        title="Responsive"
+        description="Phone first: most patients will open the chat from a text message link. Every page here is checked at 360, 390, 768 and 1440px with no horizontal page scroll, and the Chat page can preview the conversation as a phone or a desktop."
+      >
+        <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+          <div className="flex flex-col gap-3 rounded-xl border border-subtle bg-surface p-5">
+            <span className="text-title font-semibold">Breakpoints</span>
+            <ul className="flex flex-col gap-2">
+              {responsiveBreakpoints.map(([name, value, note]) => (
+                <li key={name} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <code className="break-words font-mono text-caption text-default">{name}</code>
+                  <span className="text-caption text-muted">{value}</span>
+                  <span className="text-caption text-muted">{note}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex flex-col gap-3 rounded-xl border border-subtle bg-surface p-5">
+            <span className="text-title font-semibold">Rules</span>
+            <ul className="flex list-disc flex-col gap-2 pl-5 text-body-sm text-secondary">
+              {responsiveRules.map((rule) => (
+                <li key={rule}>{rule}</li>
               ))}
             </ul>
           </div>

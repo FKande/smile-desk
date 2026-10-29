@@ -19,6 +19,7 @@ export const NAV: NavEntry[] = [
       { id: "shape", label: "Radius & elevation" },
       { id: "motion", label: "Motion" },
       { id: "layers", label: "Sizing & layers" },
+      { id: "responsive", label: "Responsive" },
       { id: "icons", label: "Icons" },
     ],
   },

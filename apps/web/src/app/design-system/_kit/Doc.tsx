@@ -41,7 +41,7 @@ export function Section({
 
 export function SourcePath({ path }: { path: string }) {
   return (
-    <code className="inline-flex w-fit items-center rounded-sm bg-subtle px-2 py-0.5 font-mono text-caption text-muted">
+    <code className="w-fit max-w-full break-all rounded-sm bg-subtle px-2 py-0.5 font-mono text-caption text-muted">
       {path}
     </code>
   );
