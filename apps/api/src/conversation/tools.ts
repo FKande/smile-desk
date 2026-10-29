@@ -34,20 +34,20 @@ interface Tool<T extends z.ZodType> {
 }
 
 // ── JSON Schema helpers ─────────────────────────────────────────────────────
-// Strict mode on both providers wants every property listed in `required`;
-// optional fields are therefore nullable rather than omitted.
-type Json = Record<string, unknown>;
+// Optional fields are simply left out of `required` (plain JSON Schema, no null
+// unions: Claude's strict mode caps how many union-typed fields a request may
+// have). The OpenAI provider converts to its all-required + nullable form itself.
+// Array length limits live in the Zod input schemas: strict mode rejects minItems > 1.
+const OPTIONAL = Symbol('optional');
+type Json = { [key: string]: unknown; [OPTIONAL]?: true };
 const str = (description: string): Json => ({ type: 'string', description });
 const enumOf = (values: readonly string[], description: string): Json => ({ type: 'string', enum: [...values], description });
 const int = (description: string): Json => ({ type: 'integer', description });
-const orNull = (schema: Json): Json =>
-  schema.enum
-    ? { ...schema, type: ['string', 'null'], enum: [...(schema.enum as unknown[]), null] }
-    : { ...schema, type: [schema.type, 'null'] };
+const optional = (schema: Json): Json => ({ ...schema, [OPTIONAL]: true });
 const object = (properties: Record<string, Json>): JsonSchemaObject => ({
   type: 'object',
-  properties,
-  required: Object.keys(properties),
+  properties: Object.fromEntries(Object.entries(properties).map(([k, { [OPTIONAL]: _, ...schema }]) => [k, schema])),
+  required: Object.keys(properties).filter((k) => !properties[k][OPTIONAL]),
   additionalProperties: false,
 });
 
@@ -56,17 +56,17 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'use YYYY-MM-DD');
 const nullish = <T extends z.ZodType>(schema: T) => schema.nullable().optional();
 
 const WHEN_SCHEMA = object({
-  phrase: orNull(str("The patient's own words about timing, verbatim (e.g. \"later next week after work\").")),
-  period: orNull(enumOf(PERIODS, 'Relative period the patient named. asap = soonest available.')),
-  portion: orNull(enumOf(PORTIONS, 'Narrows period/month: early (Mon–Tue / 1st–10th), mid (Tue–Thu / 11th–20th), late (Thu–Sat / 21st–end).')),
-  weekday: orNull(enumOf(WEEKDAYS, 'A specific weekday. With this_week/next_week picks that week; alone means the coming one.')),
-  month: orNull(int('A named month 1–12 (e.g. "early January" → month 1, portion early).')),
-  in_days: orNull(int('"in N days" → N.')),
-  in_weeks: orNull(int('"in N weeks" → N (searches that whole week).')),
-  date: orNull(str('An exact date the patient gave, YYYY-MM-DD.')),
-  from: orNull(str('Start of an explicit range, YYYY-MM-DD.')),
-  to: orNull(str('End of an explicit range (inclusive), YYYY-MM-DD.')),
-  part_of_day: orNull(enumOf(PARTS_OF_DAY, 'morning (<12), afternoon (12–4), evening (4–6).')),
+  phrase: optional(str("The patient's own words about timing, verbatim (e.g. \"later next week after work\").")),
+  period: optional(enumOf(PERIODS, 'Relative period the patient named. asap = soonest available.')),
+  portion: optional(enumOf(PORTIONS, 'Narrows period/month: early (Mon–Tue / 1st–10th), mid (Tue–Thu / 11th–20th), late (Thu–Sat / 21st–end).')),
+  weekday: optional(enumOf(WEEKDAYS, 'A specific weekday. With this_week/next_week picks that week; alone means the coming one.')),
+  month: optional(int('A named month 1–12 (e.g. "early January" → month 1, portion early).')),
+  in_days: optional(int('"in N days" → N.')),
+  in_weeks: optional(int('"in N weeks" → N (searches that whole week).')),
+  date: optional(str('An exact date the patient gave, YYYY-MM-DD.')),
+  from: optional(str('Start of an explicit range, YYYY-MM-DD.')),
+  to: optional(str('End of an explicit range (inclusive), YYYY-MM-DD.')),
+  part_of_day: optional(enumOf(PARTS_OF_DAY, 'morning (<12), afternoon (12–4), evening (4–6).')),
 });
 
 const whenInput = z
@@ -165,7 +165,7 @@ export function buildTools(deps: ToolDeps) {
           first_name: str('First name'),
           last_name: str('Last name'),
           date_of_birth: str('YYYY-MM-DD'),
-          phone: orNull(str('Phone number, any format')),
+          phone: optional(str('Phone number, any format')),
         }),
       },
       input: z.object({ first_name: z.string(), last_name: z.string(), date_of_birth: z.string(), phone: nullish(z.string()) }),
@@ -200,7 +200,7 @@ export function buildTools(deps: ToolDeps) {
           last_name: str('Last name'),
           date_of_birth: str('YYYY-MM-DD'),
           phone: str('Phone number, any format'),
-          insurance_name: orNull(str('Insurance company, or null if none / self-pay')),
+          insurance_name: optional(str('Insurance company, or null if none / self-pay')),
         }),
       },
       input: z.object({ first_name: z.string(), last_name: z.string(), date_of_birth: z.string(), phone: z.string(), insurance_name: nullish(z.string()) }),
@@ -233,9 +233,9 @@ export function buildTools(deps: ToolDeps) {
           first_name: str('First name'),
           last_name: str('Last name'),
           date_of_birth: str('YYYY-MM-DD'),
-          relationship: orNull(str('e.g. son, daughter, spouse')),
-          phone: orNull(str("Their phone, or null to use the account holder's")),
-          insurance_name: orNull(str('Their insurance; null = same as account holder; "none" = self-pay')),
+          relationship: optional(str('e.g. son, daughter, spouse')),
+          phone: optional(str("Their phone, or null to use the account holder's")),
+          insurance_name: optional(str('Their insurance; null = same as account holder; "none" = self-pay')),
         }),
       },
       input: z.object({
@@ -286,8 +286,8 @@ export function buildTools(deps: ToolDeps) {
           'Find open times for one appointment. Fill `when` from what the patient said: map their words onto the fields and never compute dates yourself. Leave fields null when not mentioned. If nothing fits, the result includes the nearest alternatives.',
         inputSchema: object({
           appointment_type: enumOf(APPOINTMENT_TYPE_IDS, 'cleaning, checkup, or emergency'),
-          when: { ...WHEN_SCHEMA, type: ['object', 'null'] },
-          limit: orNull(int('How many options (default 4)')),
+          when: optional({ ...WHEN_SCHEMA, description: 'Timing the patient asked for; null if they gave none.' }),
+          limit: optional(int('How many options (default 4)')),
         }),
       },
       input: z.object({ appointment_type: z.enum(APPOINTMENT_TYPE_IDS), when: whenInput, limit: nullish(z.number().int()) }),
@@ -325,8 +325,8 @@ export function buildTools(deps: ToolDeps) {
         name: 'find_back_to_back_slots',
         description: 'Find consecutive slots for several family members in one visit (each starts when the previous ends). One appointment type per person, in visit order.',
         inputSchema: object({
-          appointment_types: { type: 'array', items: enumOf(['cleaning', 'checkup'], 'type for this person'), minItems: 2, maxItems: 6 },
-          when: { ...WHEN_SCHEMA, type: ['object', 'null'] },
+          appointment_types: { type: 'array', items: enumOf(['cleaning', 'checkup'], 'type for this person'), description: '2 to 6 people, in visit order' },
+          when: optional({ ...WHEN_SCHEMA, description: 'Timing the patient asked for; null if they gave none.' }),
         }),
       },
       input: z.object({ appointment_types: z.array(z.enum(['cleaning', 'checkup'])).min(2).max(6), when: whenInput }),
@@ -355,13 +355,12 @@ export function buildTools(deps: ToolDeps) {
         inputSchema: object({
           bookings: {
             type: 'array',
-            minItems: 1,
-            maxItems: 6,
+            description: '1 to 6 bookings',
             items: object({
               patient_id: str('From verify_patient / register_patient / add_family_member'),
               slot_id: str('From find_open_slots / find_back_to_back_slots'),
               appointment_type: enumOf(APPOINTMENT_TYPE_IDS, 'cleaning, checkup, or emergency'),
-              reason: orNull(str('Required for emergencies: short summary of the problem')),
+              reason: optional(str('Required for emergencies: short summary of the problem')),
             }),
           },
         }),
@@ -418,7 +417,7 @@ export function buildTools(deps: ToolDeps) {
       spec: {
         name: 'cancel_appointment',
         description: 'Cancel an appointment after the patient confirms. Offer to reschedule instead first.',
-        inputSchema: object({ appointment_id: str('From get_my_appointments / verify_patient'), reason: orNull(str('Why, if they said')) }),
+        inputSchema: object({ appointment_id: str('From get_my_appointments / verify_patient'), reason: optional(str('Why, if they said')) }),
       },
       input: z.object({ appointment_id: z.string(), reason: nullish(z.string().max(500)) }),
       run: (input, session) => {
@@ -437,8 +436,8 @@ export function buildTools(deps: ToolDeps) {
           kind: enumOf(['emergency', 'escalation', 'callback'], 'emergency = urgent dental problem; escalation = needs a human decision; callback = patient wants a call'),
           urgency: enumOf(['urgent', 'high', 'normal'], 'urgent = act now; high = today; normal = next business day'),
           summary: str('What happened and what the patient needs, in one or two sentences'),
-          patient_name: orNull(str('If not verified, the name they gave')),
-          callback_phone: orNull(str('Best number to reach them, if they gave one')),
+          patient_name: optional(str('If not verified, the name they gave')),
+          callback_phone: optional(str('Best number to reach them, if they gave one')),
         }),
       },
       input: z.object({

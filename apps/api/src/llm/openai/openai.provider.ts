@@ -81,7 +81,7 @@ export class OpenAiProvider implements LlmProvider {
         type: 'function' as const,
         name: tool.name,
         description: tool.description,
-        parameters: { ...tool.inputSchema },
+        parameters: s.strictTools ? toStrictSchema({ ...tool.inputSchema }) : { ...tool.inputSchema },
         strict: s.strictTools,
       })),
       tool_choice: s.toolChoice,
@@ -130,6 +130,27 @@ export function toInputItems(transcript: TranscriptItem[]): InputItem[] {
     }
   }
   return items;
+}
+
+/**
+ * OpenAI strict mode requires every property in `required`; optional ones become
+ * nullable instead. Applied recursively to nested objects and array items.
+ */
+export function toStrictSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  if (schema.type === 'array' && schema.items && typeof schema.items === 'object') {
+    return { ...schema, items: toStrictSchema(schema.items as Record<string, unknown>) };
+  }
+  if (schema.type !== 'object' || !schema.properties) return schema;
+  const required = new Set((schema.required as string[] | undefined) ?? []);
+  const properties = Object.fromEntries(
+    Object.entries(schema.properties as Record<string, Record<string, unknown>>).map(([key, value]) => {
+      const strict = toStrictSchema(value);
+      if (required.has(key)) return [key, strict];
+      const { description, ...rest } = strict;
+      return [key, { anyOf: [rest, { type: 'null' }], ...(description ? { description } : {}) }];
+    }),
+  );
+  return { ...schema, properties, required: Object.keys(properties), additionalProperties: false };
 }
 
 function parseArguments(raw: string): Record<string, unknown> {
