@@ -1,0 +1,162 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TIER 2: SEMANTIC (UI roles)
+
+   What a color is FOR, not what it looks like. This is the only tier that
+   knows about light and dark: each token holds both values in one
+   light-dark() pair, resolved against the element's color-scheme.
+
+   THEMING
+   ───────
+   :root follows the OS (color-scheme: light dark). [data-theme] pins a
+   subtree to one scheme, which is how the theme toggle works (set on
+   <html>) and how /design-system renders light and dark panes side by side.
+   Never use Tailwind's dark: variant; the tokens already switch.
+
+   NAMING
+   ──────
+   Emphasis suffixes (-subtle, -element, -border, -solid, -text) describe
+   prominence. State suffixes (-hover, -active, -disabled) describe
+   interaction. Intents (brand, accent, success, warning, danger, info) all
+   expose the same set, so a component can swap tone without new tokens.
+
+   THE on-* PAIRING RULE
+   ─────────────────────
+   Every solid fill has a paired --fg-on-* token. Use them together; never
+   pick a foreground for a colored surface by eye. tokens.test.mjs checks
+   every pair against WCAG contrast in both schemes.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  color-scheme: light dark;
+}
+[data-theme="light"] {
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Declared on [data-theme] as well as :root ON PURPOSE. Tailwind compiles
+   light-dark() with Lightning CSS, which polyfills it as
+   var(--lightningcss-light, A) var(--lightningcss-dark, B), and a custom
+   property's var()s resolve where it is DECLARED. Re-declaring the tokens on
+   every themed element makes them resolve against that subtree's scheme;
+   declared on :root alone, a dark pane inside a light page would stay light.
+   components.css follows the same rule for the same reason. */
+:root,
+[data-theme] {
+  /* ---------- Surfaces ---------- */
+  --bg-canvas: light-dark(var(--p-slate-200), var(--p-slate-dark-100));
+  --bg-surface: light-dark(var(--p-white), var(--p-slate-dark-200));
+  --bg-surface-raised: light-dark(var(--p-white), var(--p-slate-dark-300));
+  --bg-subtle: light-dark(var(--p-slate-200), var(--p-slate-dark-300));
+  --bg-muted: light-dark(var(--p-slate-300), var(--p-slate-dark-400));
+  --bg-hover: light-dark(var(--p-slate-300), var(--p-slate-dark-400));
+  --bg-active: light-dark(var(--p-slate-400), var(--p-slate-dark-500));
+  --bg-disabled: light-dark(var(--p-slate-300), var(--p-slate-dark-300));
+  --bg-inverse: light-dark(var(--p-slate-1200), var(--p-slate-dark-1200));
+
+  /* ---------- Foreground (text and icons) ---------- */
+  --fg-default: light-dark(var(--p-slate-1200), var(--p-slate-dark-1200));
+  --fg-secondary: light-dark(var(--p-slate-1100), var(--p-slate-dark-1100));
+  --fg-muted: light-dark(var(--p-slate-900), var(--p-slate-dark-1000));
+  /* Disabled text is exempt from WCAG contrast (SC 1.4.3) and deliberately faint. */
+  --fg-disabled: light-dark(var(--p-slate-700), var(--p-slate-dark-700));
+  --fg-inverse: light-dark(var(--p-white), var(--p-slate-dark-100));
+  --fg-link: light-dark(var(--p-teal-1100), var(--p-teal-dark-1100));
+
+  /* ---------- Foreground on solid fills (the on-* pairs) ---------- */
+  --fg-on-brand: var(--p-white);
+  --fg-on-accent: var(--p-white);
+  --fg-on-success: var(--p-white);
+  --fg-on-danger: var(--p-white);
+  --fg-on-info: var(--p-white);
+  /* Amber is too light for white text, so warning pairs with dark ink in both schemes.
+     Dark uses the dark ramp's deepest step: slate-1200 on amber-dark-1000 was 4.29:1
+     (fails AA); slate-dark-100 reaches 5.18:1. */
+  --fg-on-warning: light-dark(var(--p-slate-1200), var(--p-slate-dark-100));
+
+  /* ---------- Borders ---------- */
+  --border-subtle: light-dark(var(--p-slate-300), var(--p-slate-dark-300)); /* dividers */
+  --border-default: light-dark(var(--p-slate-500), var(--p-slate-dark-500)); /* cards, chips */
+  /* Form-control boundary: must reach 3:1 against the surface (WCAG SC 1.4.11). */
+  --border-strong: light-dark(var(--p-slate-800), var(--p-slate-dark-800));
+  --border-hover: light-dark(var(--p-slate-900), var(--p-slate-dark-1000));
+
+  /* ---------- Intent: brand (teal) ---------- */
+  --brand-subtle: light-dark(var(--p-teal-200), var(--p-teal-dark-300));
+  --brand-element: light-dark(var(--p-teal-300), var(--p-teal-dark-400));
+  --brand-border: light-dark(var(--p-teal-600), var(--p-teal-dark-700));
+  /* Dark solid sits one step down (800, hover 700): white on teal-dark-900 was
+     4.40:1 (fails AA); on 800 it is 5.26:1, and 800 still clears 3:1 on surfaces. */
+  --brand-solid: light-dark(var(--p-teal-900), var(--p-teal-dark-800));
+  --brand-solid-hover: light-dark(var(--p-teal-1000), var(--p-teal-dark-700));
+  --brand-text: light-dark(var(--p-teal-1100), var(--p-teal-dark-1100));
+
+  /* ---------- Intent: accent (coral) ----------
+     Warmth, used sparingly: family/household markers and small highlights.
+     Never for primary actions (brand) or alarms (danger). */
+  --accent-subtle: light-dark(var(--p-coral-200), var(--p-coral-dark-300));
+  --accent-element: light-dark(var(--p-coral-300), var(--p-coral-dark-400));
+  --accent-border: light-dark(var(--p-coral-600), var(--p-coral-dark-700));
+  --accent-solid: light-dark(var(--p-coral-900), var(--p-coral-dark-900));
+  --accent-solid-hover: light-dark(var(--p-coral-1000), var(--p-coral-dark-800));
+  --accent-text: light-dark(var(--p-coral-1100), var(--p-coral-dark-1100));
+
+  /* ---------- Intent: success (green) ---------- */
+  --success-subtle: light-dark(var(--p-green-200), var(--p-green-dark-300));
+  --success-element: light-dark(var(--p-green-300), var(--p-green-dark-400));
+  --success-border: light-dark(var(--p-green-600), var(--p-green-dark-700));
+  /* Same shift as brand: white on green-dark-900 was 4.39:1; on 800 it is 5.22:1. */
+  --success-solid: light-dark(var(--p-green-900), var(--p-green-dark-800));
+  --success-solid-hover: light-dark(var(--p-green-1000), var(--p-green-dark-700));
+  --success-text: light-dark(var(--p-green-1100), var(--p-green-dark-1100));
+
+  /* ---------- Intent: warning (amber) ---------- */
+  --warning-subtle: light-dark(var(--p-amber-200), var(--p-amber-dark-300));
+  --warning-element: light-dark(var(--p-amber-300), var(--p-amber-dark-400));
+  --warning-border: light-dark(var(--p-amber-700), var(--p-amber-dark-700));
+  --warning-solid: light-dark(var(--p-amber-700), var(--p-amber-dark-1000));
+  --warning-solid-hover: light-dark(var(--p-amber-800), var(--p-amber-dark-1100));
+  --warning-text: light-dark(var(--p-amber-1100), var(--p-amber-dark-1100));
+
+  /* ---------- Intent: danger (red), also emergencies ---------- */
+  --danger-subtle: light-dark(var(--p-red-200), var(--p-red-dark-300));
+  --danger-element: light-dark(var(--p-red-300), var(--p-red-dark-400));
+  --danger-border: light-dark(var(--p-red-600), var(--p-red-dark-700));
+  --danger-solid: light-dark(var(--p-red-900), var(--p-red-dark-900));
+  --danger-solid-hover: light-dark(var(--p-red-1000), var(--p-red-dark-800));
+  --danger-text: light-dark(var(--p-red-1100), var(--p-red-dark-1100));
+
+  /* ---------- Intent: info (blue) ---------- */
+  --info-subtle: light-dark(var(--p-blue-200), var(--p-blue-dark-300));
+  --info-element: light-dark(var(--p-blue-300), var(--p-blue-dark-400));
+  --info-border: light-dark(var(--p-blue-600), var(--p-blue-dark-700));
+  --info-solid: light-dark(var(--p-blue-900), var(--p-blue-dark-900));
+  --info-solid-hover: light-dark(var(--p-blue-1000), var(--p-blue-dark-800));
+  --info-text: light-dark(var(--p-blue-1100), var(--p-blue-dark-1100));
+
+  /* ---------- Focus ----------
+     A solid 2px outline with a 2px offset (WCAG 2.2 SC 2.4.13 focus
+     appearance), not a translucent glow: it has to survive low vision. */
+  --focus-ring: light-dark(var(--p-teal-900), var(--p-teal-dark-1100));
+  --focus-ring-danger: light-dark(var(--p-red-900), var(--p-red-dark-1100));
+
+  /* ---------- Overlay and elevation tints ---------- */
+  --scrim: light-dark(oklch(25% 0.02 235 / 0.45), oklch(8% 0.01 235 / 0.7));
+  /* Shadows fade in dark mode, where elevation reads from lighter surfaces instead. */
+  --shadow-tint-soft: light-dark(oklch(25% 0.03 235 / 0.06), oklch(0% 0 0 / 0.3));
+  --shadow-tint-strong: light-dark(oklch(25% 0.03 235 / 0.12), oklch(0% 0 0 / 0.5));
+  --selection: light-dark(var(--p-teal-400), var(--p-teal-dark-500));
+
+  /* ---------- Elevation: named by role, not size ----------
+     Exposed to Tailwind as shadow-raised / -card / -overlay / -modal (theme.css).
+       raised  = resting chrome barely off the page
+       card    = a resting surface that should read as lifted
+       overlay = transient popovers and toasts
+       modal   = surfaces that take over the screen */
+  --elevation-raised: 0 1px 2px 0 var(--shadow-tint-soft);
+  --elevation-card: 0 1px 2px 0 var(--shadow-tint-soft), 0 8px 24px -12px var(--shadow-tint-strong);
+  --elevation-overlay: 0 2px 4px -1px var(--shadow-tint-soft), 0 12px 32px -8px var(--shadow-tint-strong);
+  --elevation-modal: 0 4px 8px -2px var(--shadow-tint-soft), 0 24px 64px -16px var(--shadow-tint-strong);
+}

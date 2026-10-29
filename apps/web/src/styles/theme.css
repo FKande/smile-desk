@@ -1,0 +1,273 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TAILWIND MAPPING
+
+   Exposes tier 2 (semantic) tokens as utilities and nothing else. The
+   default Tailwind palette is switched off (--color-*: initial), so
+   bg-zinc-50 or text-blue-600 simply do not exist; the only colors
+   available are roles: bg-canvas, text-muted, border-strong,
+   bg-brand-solid, text-on-brand …
+
+   `@theme inline` emits var(--bg-canvas) straight into each utility, so
+   the value resolves where it is used. That keeps [data-theme] subtrees
+   and the OS preference working at runtime.
+
+   Component code that needs a tier-3 token uses the var shorthand:
+   bg-(--button-primary-bg), h-(--control-h-md), rounded-(--card-radius).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* `static` emits every variable even when no utility uses it: component
+   tokens and base.css read --radius-*, --shadow-* and --text-* directly. */
+@theme static {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
+
+  /* ---------- Type: role-named, rem-based so the text-size setting scales it ----------
+     Body copy is 17px, not 16: the chat is read by every age group, and a
+     hair larger body text is the cheapest legibility win there is.
+     Every role carries a slight negative letter-spacing for a modern, tighter
+     texture. It scales with size: display tightens most, while caption stays
+     close to 0 because tight small text hurts low-vision readers. */
+  --text-caption: 0.875rem; /* 14px: the floor; nothing patient-facing goes smaller */
+  --text-caption--line-height: 1.4;
+  --text-caption--letter-spacing: -0.003em;
+  --text-label: 0.9375rem; /* 15px: control labels, chips, buttons */
+  --text-label--line-height: 1.3;
+  --text-label--letter-spacing: -0.006em;
+  --text-body-sm: 0.9375rem; /* 15px: secondary copy */
+  --text-body-sm--line-height: 1.5;
+  --text-body-sm--letter-spacing: -0.006em;
+  --text-body: 1.0625rem; /* 17px: messages and reading text */
+  --text-body--line-height: 1.55;
+  --text-body--letter-spacing: -0.01em;
+  --text-title: 1.25rem; /* 20px: card and section titles */
+  --text-title--line-height: 1.35;
+  --text-title--letter-spacing: -0.015em;
+  --text-heading: 1.625rem; /* 26px: page headings */
+  --text-heading--line-height: 1.25;
+  --text-heading--letter-spacing: -0.02em;
+  --text-display: 2.5rem; /* 40px: catalog and marketing only */
+  --text-display--line-height: 1.1;
+  --text-display--letter-spacing: -0.028em;
+
+  /* ---------- Radius ---------- */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-full: 9999px;
+
+  /* ---------- Easing: named by job ----------
+     out      = the everyday decelerate (hovers, fades, entrances)
+     emphasis = snappier arrival for things that should be noticed (dialog, toast)
+     in-out   = continuous or looping motion only */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---------- Animations (keyframes below) ---------- */
+  --animate-spin: spin var(--duration-loop-spin) linear infinite;
+  --animate-typing: typing var(--duration-loop-pulse) var(--ease-in-out) infinite;
+  --animate-shimmer: shimmer var(--duration-loop-shimmer) var(--ease-in-out) infinite;
+  --animate-progress: progress var(--duration-loop-sweep) var(--ease-in-out) infinite;
+  --animate-fade-in: fade-in var(--duration-base) var(--ease-out) both;
+  --animate-rise-in: rise-in var(--duration-base) var(--ease-emphasis) both;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes typing {
+    0%, 60%, 100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(-0.2em);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+  @keyframes progress {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(250%);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+}
+
+@theme inline {
+  /* ---------- Fonts (variables set by next/font in app/layout.tsx) ---------- */
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-atkinson-mono), ui-monospace, monospace;
+
+  /* ---------- Elevation (values live in semantic.css: they change with the scheme) ---------- */
+  --shadow-raised: var(--elevation-raised);
+  --shadow-card: var(--elevation-card);
+  --shadow-overlay: var(--elevation-overlay);
+  --shadow-modal: var(--elevation-modal);
+
+  /* ---------- Surfaces: bg-* ---------- */
+  --background-color-canvas: var(--bg-canvas);
+  --background-color-surface: var(--bg-surface);
+  --background-color-surface-raised: var(--bg-surface-raised);
+  --background-color-subtle: var(--bg-subtle);
+  --background-color-muted: var(--bg-muted);
+  --background-color-hover: var(--bg-hover);
+  --background-color-active: var(--bg-active);
+  --background-color-disabled: var(--bg-disabled);
+  --background-color-inverse: var(--bg-inverse);
+
+  /* ---------- Foreground: text-* ---------- */
+  --text-color-default: var(--fg-default);
+  --text-color-secondary: var(--fg-secondary);
+  --text-color-muted: var(--fg-muted);
+  --text-color-disabled: var(--fg-disabled);
+  --text-color-inverse: var(--fg-inverse);
+  --text-color-link: var(--fg-link);
+  --text-color-on-brand: var(--fg-on-brand);
+  --text-color-on-accent: var(--fg-on-accent);
+  --text-color-on-success: var(--fg-on-success);
+  --text-color-on-warning: var(--fg-on-warning);
+  --text-color-on-danger: var(--fg-on-danger);
+  --text-color-on-info: var(--fg-on-info);
+
+  /* ---------- Borders: border-* ---------- */
+  --border-color-subtle: var(--border-subtle);
+  --border-color-default: var(--border-default);
+  --border-color-strong: var(--border-strong);
+  --border-color-hover: var(--border-hover);
+
+  /* ---------- Intents: usable as bg-, text-, border-, ring-, outline- ---------- */
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-element: var(--brand-element);
+  --color-brand-border: var(--brand-border);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-solid-hover: var(--brand-solid-hover);
+  --color-brand-text: var(--brand-text);
+
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-element: var(--accent-element);
+  --color-accent-border: var(--accent-border);
+  --color-accent-solid: var(--accent-solid);
+  --color-accent-solid-hover: var(--accent-solid-hover);
+  --color-accent-text: var(--accent-text);
+
+  --color-success-subtle: var(--success-subtle);
+  --color-success-element: var(--success-element);
+  --color-success-border: var(--success-border);
+  --color-success-solid: var(--success-solid);
+  --color-success-solid-hover: var(--success-solid-hover);
+  --color-success-text: var(--success-text);
+
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-element: var(--warning-element);
+  --color-warning-border: var(--warning-border);
+  --color-warning-solid: var(--warning-solid);
+  --color-warning-solid-hover: var(--warning-solid-hover);
+  --color-warning-text: var(--warning-text);
+
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-element: var(--danger-element);
+  --color-danger-border: var(--danger-border);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-solid-hover: var(--danger-solid-hover);
+  --color-danger-text: var(--danger-text);
+
+  --color-info-subtle: var(--info-subtle);
+  --color-info-element: var(--info-element);
+  --color-info-border: var(--info-border);
+  --color-info-solid: var(--info-solid);
+  --color-info-solid-hover: var(--info-solid-hover);
+  --color-info-text: var(--info-text);
+
+  --color-focus: var(--focus-ring);
+}
+
+/* ═══ STATE VARIANTS ════════════════════════════════════════════════
+   Each interactive state is one variant that matches BOTH the live
+   pseudo-class and a forced data-state attribute. Components write
+   `hovered:bg-…` once; /design-system passes data-state="hover" to freeze
+   the look for documentation. The live app never sets data-state.
+   Hover only applies on devices that can hover, so touch never sticks.
+   ═══════════════════════════════════════════════════════════════════ */
+@custom-variant hovered {
+  @media (hover: hover) {
+    &:hover:not(:disabled, [aria-disabled="true"], [data-state]) {
+      @slot;
+    }
+  }
+  &[data-state="hover"] {
+    @slot;
+  }
+}
+@custom-variant pressed {
+  &:active:not(:disabled, [aria-disabled="true"], [data-state]) {
+    @slot;
+  }
+  &[data-state="active"] {
+    @slot;
+  }
+}
+@custom-variant focused {
+  &:focus-visible {
+    @slot;
+  }
+  &[data-state="focus"] {
+    @slot;
+  }
+}
+/* Container focus: a wrapper (composer, input group) reacting to keyboard focus inside it. */
+@custom-variant focused-within {
+  &:has(:focus-visible) {
+    @slot;
+  }
+  &[data-state="focus"] {
+    @slot;
+  }
+}
+@custom-variant is-disabled {
+  &:disabled,
+  &[aria-disabled="true"],
+  &[data-state="disabled"] {
+    @slot;
+  }
+}
+
+/* The one focus affordance. Pair with the variant: focused:focus-ring */
+@utility focus-ring {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+@utility focus-ring-inset {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}

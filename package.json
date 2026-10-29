@@ -12,7 +12,7 @@
     "build": "npm run build -w @smile-desk/api && npm run build -w @smile-desk/web",
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test -w @smile-desk/api"
+    "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
