@@ -147,7 +147,7 @@ sequenceDiagram
 | `book_appointments` | Books 1–6 visits atomically. Emergencies alert staff in code. |
 | `reschedule_appointment` | Moves a visit to a new slot of the same type |
 | `cancel_appointment` | Cancels, after Maya offers to reschedule |
-| `notify_staff` | Emergency, escalation or callback alert, with a reference number |
+| `notify_staff` | Emergency, escalation or callback alert, with a reference number. A repeat of the same kind in the same conversation reuses the open alert instead of paging the team again. |
 
 **Dates: the model extracts, code computes** (`apps/api/src/scheduling/when.ts`). The model never does calendar math. It maps the patient's words onto a small, closed vocabulary in the search tool's `when` field: `period` (asap, today, tomorrow, this/next week, week after next, this/next month), `portion` (early / mid / late), `weekday`, `month`, `in_days`, `in_weeks`, `date`, `from`/`to`, and `part_of_day`. Luxon resolves that in the practice's timezone:
 
@@ -190,7 +190,7 @@ The tool returns a plain-English restatement ("later next week (Thu, Nov 12 – 
 | Location and hours: Mon–Sat, 8 AM to 6 PM | Slots exist only in opening hours (with a lunch break); Sunday requests get the nearest open days | `practice/practice.ts`, `scheduling` |
 | Subjective dates ("later next week", "early next month") | Structured extraction by the model, date math in tested code | `scheduling/when.ts` |
 | Times don't work for the patient | Ask what works, search again, offer the nearest alternatives when a window is full | `find_open_slots`, system prompt |
-| Natural, human-like tone that adapts to context | One persona, short messages, tone matched to pain, nerves or confusion; says it's an AI if asked | `conversation/system-prompt.ts` |
+| Natural, human-like tone that adapts to context | One persona, short messages, tone matched to pain, nerves or confusion; replies in the patient's language; says it's an AI if asked | `conversation/system-prompt.ts` |
 | Unexpected input | Off-topic, gibberish, injection and over-long messages each have a defined behavior | system prompt, `ConversationService.validate` |
 | Staff notification and escalation | Durable alerts (emergency / escalation / callback, with priority), a live `/staff` queue with acknowledge | `NotificationsService`, `apps/web/src/app/staff` |
 | Error handling and fallbacks | Provider failover, safe degraded reply, step limit, recoverable tool errors | `LlmRouterService`, `ConversationService` |
@@ -256,7 +256,7 @@ The brief asks to treat this as a production app for hundreds of locations and 1
 | Web chat only | The tools are channel-agnostic, so the same tools can back voice and SMS |
 | Observability is structured logs (latency, tokens, cache hits, tool outcomes) | Per-conversation traces, and alerts on booking-failure rate and fallback rate |
 | Feedback is a table and an endpoint | A review queue of 👎 conversations → prompt and tool fixes → each one added to the eval set |
-| Real-model evals run by hand | A scripted scenario suite against the real model, run nightly and before prompt or model changes, not on every PR (it costs money and results vary slightly). In progress in PR #7. |
+| Real-model evals are run on demand (`npm run eval`), not on a schedule | Run the scenario suite nightly and before every prompt, tool or model change, and grow it from 👎 conversations. It stays out of per-PR CI because it costs money and results vary slightly. |
 
 ### Failure modes and how they're handled
 
@@ -304,7 +304,7 @@ The levers, in order:
 - **The web tests** cover the SSE frame parser, stream-text accumulation, and the design-system contrast and token-usage guards.
 - **CI** (`.github/workflows/ci.yml`) runs lint, typecheck, unit and e2e tests, and the build on every pull request and every push to `main`.
 - **Live runs** of every core scenario on both Claude and OpenAI before merging. That's where the four schema bugs above were found.
-- **Real-model evals** (PR #7, in progress) add a repeatable suite of ten scripted patient conversations that check end states (the right card on the right days, an urgent alert raised, nothing leaked) rather than wording. They're meant to run nightly, not in CI.
+- **Real-model evals** (`apps/api/evals/`, `npm run eval -w @smile-desk/api`): ten scripted patient conversations against the real model through a running API. They check end states (the right card on the right days, an urgent alert raised, nothing leaked after a wrong date of birth, no Sunday times) rather than wording. They're meant for nightly runs and before prompt or model changes, not CI, because they cost money and vary slightly between runs. The first run passed 10/10. Setup (a fresh DB on port 4300) is in [`apps/api/evals/README.md`](apps/api/evals/README.md).
 
 ## Configuration
 
