@@ -277,7 +277,7 @@ The brief asks to treat this as a production app for hundreds of locations and 1
 
 ### Cost at scale
 
-These are rough numbers from live runs and published prices. A typical conversation makes about **8 model calls**. Each call reads about **7k tokens from cache** (billed at about 10% of the input price) and writes about **200–300 output tokens**, so output dominates the cost.
+These are rough numbers from live runs and published prices. A typical conversation makes about **8 model calls**. Each call reads about **7k tokens from cache** (on Opus 5.5, cache reads cost $0.20 per million tokens against $4 for fresh input, about 5%) and writes about **200–300 output tokens**, so output dominates the cost.
 
 | Model | Per conversation | At 10k conversations a day |
 | --- | --- | --- |
