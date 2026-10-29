@@ -82,4 +82,6 @@ Patients range from teenagers to grandparents booking for the whole family, so t
 - `apps/web/test/tokens.test.mjs` computes WCAG contrast for 95 color pairs in each theme. Every pair must reach AA, body text must reach AAA (7:1), and control borders and focus rings must reach 3:1.
 - `token-usage.test.mjs` fails if a component uses a primitive, a raw color, a default-palette class or `dark:`.
 
+**Responsive, phone first.** Every page is checked at 360, 390, 768, 1024 and 1440px, at both default and the largest text size, with no sideways page scroll. The Chat page has a **Phone / Desktop preview switch**, so on a laptop you can see the conversation exactly as a phone user would.
+
 **No new dependencies.** Icons are inline SVGs, fonts are self-hosted by `next/font`, and the contrast math is hand-written.
