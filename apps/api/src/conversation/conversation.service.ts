@@ -18,6 +18,7 @@ import { buildTools, type ToolBox, type ToolSession } from './tools.js';
 export const MAX_MESSAGE_LENGTH = 2000;
 
 export interface AppointmentCard {
+  action: 'booked' | 'rescheduled' | 'cancelled';
   appointmentId: string;
   patientName: string;
   typeLabel: string;
@@ -163,7 +164,8 @@ export class ConversationService {
     return {
       conversationId,
       reply,
-      appointments: session.changedAppointments.map((a) => ({
+      appointments: session.changedAppointments.map(({ action, appointment: a }) => ({
+        action,
         appointmentId: a.appointmentId,
         patientName: a.patientName,
         typeLabel: a.typeLabel,

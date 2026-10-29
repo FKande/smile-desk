@@ -17,7 +17,7 @@ export interface ToolSession {
   actorId: string | null;
   escalated: boolean;
   /** Appointments created, moved or cancelled during the current turn, for confirmation cards. */
-  changedAppointments: AppointmentView[];
+  changedAppointments: { action: 'booked' | 'rescheduled' | 'cancelled'; appointment: AppointmentView }[];
 }
 
 export interface ToolDeps {
@@ -378,7 +378,7 @@ export function buildTools(deps: ToolDeps) {
           input.bookings.map((b) => ({ patientId: b.patient_id, slotId: b.slot_id, type: b.appointment_type, reason: b.reason ?? undefined })),
           { bookedById: actorId, requestId },
         );
-        session.changedAppointments.push(...booked);
+        session.changedAppointments.push(...booked.map((appointment) => ({ action: 'booked' as const, appointment })));
 
         // Emergency alerts are enforced here, not left to the model's judgment.
         let staffNotified = false;
@@ -408,7 +408,7 @@ export function buildTools(deps: ToolDeps) {
       input: z.object({ appointment_id: z.string(), new_slot_id: z.string() }),
       run: (input, session) => {
         const appt = scheduling.reschedule({ appointmentId: input.appointment_id, newSlotId: input.new_slot_id, actorId: requireActor(session) });
-        session.changedAppointments.push(appt);
+        session.changedAppointments.push({ action: 'rescheduled', appointment: appt });
         return { rescheduled: apptOut(appt) };
       },
     }),
@@ -422,7 +422,7 @@ export function buildTools(deps: ToolDeps) {
       input: z.object({ appointment_id: z.string(), reason: nullish(z.string().max(500)) }),
       run: (input, session) => {
         const appt = scheduling.cancel({ appointmentId: input.appointment_id, actorId: requireActor(session), reason: input.reason ?? undefined });
-        session.changedAppointments.push(appt);
+        session.changedAppointments.push({ action: 'cancelled', appointment: appt });
         return { cancelled: apptOut(appt) };
       },
     }),
