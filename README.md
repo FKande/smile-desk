@@ -8,7 +8,7 @@ Meet **Maya**, the AI front desk for a dental practice. Patients chat with her t
 
 ## Try it
 
-> **Live demo:** LIVE_URL
+> **Live demo:** https://smile-desk-ashy.vercel.app (patient chat) · https://smile-desk-ashy.vercel.app/staff (staff alerts; the token is shared separately)
 >
 > Web on Vercel, API on Render (always on). See [Deployment](#deployment).
 
