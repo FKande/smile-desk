@@ -25,7 +25,7 @@ npm run db:reset -w @smile-desk/api   # optional: wipe the DB, it re-seeds on ne
 
 ## Demo script
 
-Data is seeded relative to today: six weeks of Mon–Sat slots, about 50% booked, today and tomorrow nearly full, one Saturday fully booked.
+Data is seeded relative to today: about seven months of Mon–Sat slots, about 50% booked (thinning to 30% past three months), today and tomorrow nearly full, one Saturday fully booked. Every boot tops up missing slots and demo patients without touching existing data.
 
 | Seeded patient | Date of birth | Good for |
 | --- | --- | --- |
@@ -83,7 +83,7 @@ sequenceDiagram
 | Brief item | How | Where |
 | --- | --- | --- |
 | New patient intake (name, phone, DOB, insurance) | Collected, read back, registered on a clear yes | `register_patient` |
-| Sample slots; cleaning, checkup, emergency (summary, staff told) | Six weeks seeded; 60 / 30 / 30 min; emergency needs a `reason`, urgent alert written in code | `database/seed.ts`, `book_appointments` |
+| Sample slots; cleaning, checkup, emergency (summary, staff told) | About seven months seeded (bookable up to ~7 months ahead, e.g. six-month follow-ups); 60 / 30 / 30 min; emergency needs a `reason`, urgent alert written in code | `database/seed.ts`, `book_appointments` |
 | Verify; follow-up, reschedule, cancel | Name + DOB (+ phone), no leak; confirm first, cancel offers a reschedule | `verify_patient`, `reschedule_appointment` |
 | Family and back-to-back | Guardian/spouse rules, all-or-nothing booking | `find_back_to_back_slots` |
 | Subjective dates, times that don't work | Model extracts a `when` spec, code does the math; re-search with alternatives | `scheduling/when.ts` |
