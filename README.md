@@ -173,7 +173,7 @@ The tool returns a plain-English restatement ("later next week (Thu, Nov 12 – 
 
 **Prompt caching.** The system prompt holds no dates, ids or patient data, so the tools and the system prompt form a byte-identical prefix across every conversation at a location. Per-turn facts travel in the `<context>` block of the patient turn instead. On Claude, cache breakpoints sit on the system prompt and on the growing history (5-minute TTL by default). On OpenAI, the provider sends a per-location `prompt_cache_key`. In live runs, Claude read about 6–8k tokens per call from cache, with only a handful uncached; OpenAI read about 3k.
 
-**Data model** (`apps/api/src/database/schema.ts`): `locations`, `providers`, `households`, `patients` (with `household_id` and `guardian_id`), `slots` (with `emergency_hold`), `appointments`, `staff_notifications`, `conversations`, `messages`, `settings` and `feedback`. Every patient, provider, conversation and alert row carries a `location_id`, so the same schema can serve many practices. Times are stored in UTC and reasoned about in the practice's timezone.
+**Data model** (`apps/api/src/database/schema.ts`): `locations`, `providers`, `households`, `patients` (with `household_id` and `guardian_id`), `slots` (with `emergency_hold`), `appointments`, `staff_notifications`, `conversations`, `messages`, `turn_outcomes` (what each turn showed, for restoring after a refresh), `settings` and `feedback`. Every patient, provider, conversation and alert row carries a `location_id`, so the same schema can serve many practices. Times are stored in UTC and reasoned about in the practice's timezone.
 
 ## Covers the brief
 
@@ -202,7 +202,7 @@ The tool returns a plain-English restatement ("later next week (Thu, Nov 12 – 
 
 1. **Double-booking is prevented by the database, not the app.** A partial unique index allows one live appointment per slot. App-level "check, then insert" races at scale, and a constraint doesn't. The loser gets `slot_unavailable`, and Maya offers the next time.
 2. **Family bookings are atomic.** All members are booked in one transaction, or none are. There's no "the kid is booked but the parent's slot failed".
-3. **Bookings are idempotent.** The request id is a hash of the conversation and the booking list, so a retried tool call or network retry returns the original appointment instead of a duplicate.
+3. **Bookings are idempotent.** The request id is a hash of the turn and the booking list, so a retried tool call within a turn returns the original appointment instead of a duplicate.
 4. **Emergency alerts are enforced in code.** `book_appointments` writes the urgent staff alert itself. The prompt tells Maya to *say* so, but the alert doesn't depend on the model remembering.
 5. **Identity is held by the server.** The model can't assert who it's acting for. An injected "book for patient X" fails with `forbidden`.
 6. **Structured date extraction, not regex or model arithmetic.** My first version matched phrases with regex, and it broke on wordings I hadn't anticipated. Models handle language well but are confidently wrong at calendar math, so the model fills a closed schema and Luxon does the math, with table-driven tests at a fixed clock.
@@ -257,7 +257,7 @@ The brief asks to treat this as a production app for hundreds of locations and 1
 | Web chat only | The tools are channel-agnostic, so the same tools can back voice and SMS |
 | Observability is structured logs (latency, tokens, cache hits, tool outcomes) | Per-conversation traces, and alerts on booking-failure rate and fallback rate |
 | Feedback is a table and an endpoint | A review queue of 👎 conversations → prompt and tool fixes → each one added to the eval set |
-| Real-model evals are run on demand (`npm run eval`), not on a schedule | Run the scenario suite nightly and before every prompt, tool or model change, and grow it from 👎 conversations. It stays out of per-PR CI because it costs money and results vary slightly. |
+| Real-model evals are run on demand (`npm run eval -w @smile-desk/api`), not on a schedule | Run the scenario suite nightly and before every prompt, tool or model change, and grow it from 👎 conversations. It stays out of per-PR CI because it costs money and results vary slightly. |
 
 ### Failure modes and how they're handled
 
@@ -303,7 +303,7 @@ The levers, in order:
 
 - **The agent loop runs against a scripted model**, so the conversation engine is tested deterministically. The tests cover registration and booking, refusing to act before verification, identity remembered across turns, automatic emergency alerts, atomic family booking, tool-error recovery, failover, missing keys, a total outage, runaway loops, the append-only transcript, the streaming event order, and mid-stream failover.
 - **The domain layer** covers the double-booking race, idempotency, guardian and spouse permissions, emergency holds, part-of-day filtering, the fully booked Saturday, and identity checks (including the two David Chens). Date resolution is table-driven: each row is a patient phrase, the fields the model fills, and the expected dates.
-- **The web tests** cover the SSE frame parser, stream-text accumulation, and the design-system contrast and token-usage guards.
+- **The web tests** cover the SSE frame parser, stream-text accumulation, history restore, and the design-system contrast and token-usage guards.
 - **CI** (`.github/workflows/ci.yml`) runs lint, typecheck, unit and e2e tests, and the build on every pull request and every push to `main`.
 - **Live runs** of every core scenario on both Claude and OpenAI before merging. That's where the four schema bugs above were found.
 - **Real-model evals** (`apps/api/evals/`, `npm run eval -w @smile-desk/api`): ten scripted patient conversations against the real model through a running API. They check end states (the right card on the right days, an urgent alert raised, nothing leaked after a wrong date of birth, no Sunday times) rather than wording. They're meant for nightly runs and before prompt or model changes, not CI, because they cost money and vary slightly between runs. The first run passed 10/10. Setup (a fresh DB on port 4300) is in [`apps/api/evals/README.md`](apps/api/evals/README.md).
@@ -373,7 +373,7 @@ apps/
     src/components/             design-system components (ui, chat, feedback, theme)
     src/lib/                    API clients, SSE parser
     src/styles/                 token tiers
-    test/                       SSE, reply-text, contrast and token-usage tests
+    test/                       SSE, reply-text, chat-turns, contrast and token-usage tests
 render.yaml                     Render Blueprint
 .github/workflows/ci.yml        CI
 ```
