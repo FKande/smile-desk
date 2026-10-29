@@ -10,7 +10,8 @@ export const PRACTICE_PHONE = "(415) 555-0100";
 export const PRACTICE_LOCATION = "Smile Desk Dental, 120 Market St, Suite 400, San Francisco";
 export const PRACTICE_HOURS = "Open Mon–Sat, 8 AM – 6 PM";
 
-/** The API's typeLabel → the card's visit type, and the visit length. */
+/** The API's typeLabel → the card's visit type, and the visit length for
+ *  servers whose cards don't carry `durationMinutes` yet. */
 export const VISIT_TYPES: Record<string, { type: AppointmentType; duration: string }> = {
   Cleaning: { type: "cleaning", duration: "60 min" },
   "General checkup": { type: "checkup", duration: "30 min" },

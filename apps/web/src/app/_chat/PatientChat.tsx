@@ -305,7 +305,7 @@ function Appointment({ appointment }: { appointment: AppointmentSummary }) {
       patientName={appointment.patientName}
       date={date}
       time={time}
-      duration={visit.duration}
+      duration={appointment.durationMinutes ? `${appointment.durationMinutes} min` : visit.duration}
       location={where}
     />
   );

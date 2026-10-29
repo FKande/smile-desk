@@ -99,6 +99,17 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS messages_conversation ON messages (conversation_id, created_at);
 
+-- What each finished turn showed the patient (reply, cards, flags), so a reloaded chat
+-- looks the way it did live. Kept beside messages, which stay append-only and untouched.
+CREATE TABLE IF NOT EXISTS turn_outcomes (
+  id              TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES conversations(id),
+  message_id      TEXT NOT NULL REFERENCES messages(id), -- the patient message that opened the turn
+  payload         TEXT NOT NULL,             -- JSON
+  created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS turn_outcomes_conversation ON turn_outcomes (conversation_id);
+
 -- Runtime settings changed from the settings UI (e.g. LLM provider and model knobs).
 CREATE TABLE IF NOT EXISTS settings (
   key        TEXT PRIMARY KEY,

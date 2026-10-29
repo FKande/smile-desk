@@ -66,6 +66,8 @@ const card = (overrides: Partial<AppointmentSummary>): AppointmentSummary => ({
   label: slot(3, "9:00 AM"),
   providerName: "Dana Lee, RDH",
   status: "booked",
+  reason: null,
+  durationMinutes: 60,
   ...overrides,
 });
 
@@ -134,6 +136,7 @@ export function scriptTurn(conversationId: string, conversation: MockConversatio
             label: slot(0, "2:00 PM"),
             providerName: "Dr. Ana Ruiz",
             reason: conversation.pendingReason,
+            durationMinutes: 30,
           })
         : card({}),
     ];
@@ -219,10 +222,20 @@ export async function openTurn(request: Request): Promise<ParsedTurn> {
   return { conversationId, conversation, message };
 }
 
-/** Records the finished turn in the transcript. */
-export function recordTurn(conversation: MockConversation, message: string, reply: string) {
+/** Records the finished turn in the transcript, with what it showed, like the API's history. */
+export function recordTurn(conversation: MockConversation, message: string, reply: ChatReply) {
   conversation.messages.push({ role: "patient", text: message });
-  if (reply) conversation.messages.push({ role: "assistant", text: reply });
+  if (reply.reply) {
+    const { appointments, escalated, degraded } = reply;
+    conversation.messages.push({
+      role: "assistant",
+      text: reply.reply,
+      appointments,
+      escalated,
+      degraded,
+      at: new Date().toISOString(),
+    });
+  }
 }
 
 const wait = (ms: number, signal: AbortSignal) =>
@@ -260,7 +273,7 @@ export function streamTurn(
         }
       }
       if (!signal.aborted) {
-        recordTurn(conversation, message, turn.reply.reply);
+        recordTurn(conversation, message, turn.reply);
         controller.enqueue(frame("done", turn.reply));
       }
       controller.close();
