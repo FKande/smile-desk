@@ -66,8 +66,18 @@ describe('SchedulingService', () => {
 
     it('rejects nonsense windows and unknown types', () => {
       expect(() => ctx.scheduling.findOpenSlots({ type: 'cleaning', from: fromNow(5), to: fromNow(2) })).toThrow(ValidationError);
-      expect(() => ctx.scheduling.findOpenSlots({ type: 'cleaning', to: fromNow(200) })).toThrow(ValidationError);
+      expect(() => ctx.scheduling.findOpenSlots({ type: 'cleaning', to: fromNow(240) })).toThrow(ValidationError);
       expect(() => ctx.scheduling.findOpenSlots({ type: 'whitening' as never })).toThrow(ValidationError);
+    });
+
+    it('searches up to about 7 months ahead for follow-ups', () => {
+      // A short window six months out (e.g. "early May"): the cap is on length, not distance.
+      expect(() => ctx.scheduling.findOpenSlots({ type: 'cleaning', from: fromNow(182), to: fromNow(192) })).not.toThrow();
+      // One search spanning today to ~7 months out.
+      expect(() => ctx.scheduling.findOpenSlots({ type: 'cleaning', to: fromNow(214) })).not.toThrow();
+      expect(() => ctx.scheduling.findBackToBack({ types: ['cleaning', 'checkup'], from: fromNow(182), to: fromNow(212) })).not.toThrow();
+      // Longer than one search allows, even if it starts later.
+      expect(() => ctx.scheduling.findOpenSlots({ type: 'cleaning', from: fromNow(30), to: fromNow(250) })).toThrow(ValidationError);
     });
   });
 
