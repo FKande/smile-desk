@@ -1,3 +1,4 @@
+import { parseTranscript } from "./chat-turns";
 import { createSseParser, type SseFrame } from "./sse";
 
 /* Everything the patient chat needs from the API, in one place.
@@ -20,7 +21,9 @@ export type AppointmentSummary = {
   providerName: string;
   status: string;
   /** The patient's reason, when the server shares it (emergency summary). */
-  reason?: string;
+  reason?: string | null;
+  /** Visit length; older servers leave it out. */
+  durationMinutes?: number;
 };
 
 export type ChatReply = {
@@ -33,7 +36,13 @@ export type ChatReply = {
   degraded: boolean;
 };
 
-export type TranscriptMessage = { role: "patient" | "assistant"; text: string };
+/** One bubble of restored history. Assistant entries that ended a turn also
+ *  carry what that turn showed; older servers send text only. */
+export type TranscriptMessage =
+  | { role: "patient"; text: string }
+  | ({ role: "assistant"; text: string; at?: string } & Partial<
+      Pick<ChatReply, "appointments" | "escalated" | "degraded">
+    >);
 
 export type StreamEvent =
   | { type: "start"; conversationId: string }
@@ -197,11 +206,7 @@ async function readStream(
 
 export async function fetchTranscript(conversationId: string, signal?: AbortSignal): Promise<TranscriptMessage[]> {
   const response = await request(`/chat/${encodeURIComponent(conversationId)}/messages`, { signal });
-  const data = (await response.json()) as unknown;
-  if (!Array.isArray(data)) return [];
-  return data.filter(
-    (m): m is TranscriptMessage => typeof m?.text === "string" && (m.role === "patient" || m.role === "assistant"),
-  );
+  return parseTranscript(await response.json());
 }
 
 export async function sendFeedback(conversationId: string, rating: 1 | -1, comment?: string): Promise<void> {

@@ -7,9 +7,9 @@ import {
   loadConversationId,
   saveConversationId,
   sendMessage,
-  type AppointmentSummary,
   type ChatReply,
 } from "@/lib/chat-client";
+import { restoreThread, turnAttachments, type TurnAttachments } from "@/lib/chat-turns";
 import { applyStreamEvent, emptyStream, streamedText } from "@/lib/reply-text";
 import { PRACTICE_PHONE } from "./practice";
 
@@ -18,16 +18,11 @@ import { PRACTICE_PHONE } from "./practice";
 
 export type PatientMessage = { id: string; role: "patient"; text: string; at?: Date };
 
-export type AssistantMessage = {
+export type AssistantMessage = TurnAttachments & {
   id: string;
   role: "assistant";
   text: string;
   at?: Date;
-  appointments: AppointmentSummary[];
-  /** First reply after staff were alerted: show the hand-off notice. */
-  staffNotified: boolean;
-  emergency?: { summary: string; notifiedAt: string };
-  degraded: boolean;
   /** Already shown as a streaming bubble, so it shouldn't animate in again. */
   streamed: boolean;
 };
@@ -40,8 +35,6 @@ export type ChatMessage = PatientMessage | AssistantMessage | SystemMessage;
 export type LiveReply = { text: string; status: string | null };
 
 export type TurnError = { message: string; retryText: string; patientId: string };
-
-const EMERGENCY_TYPE = "Emergency visit";
 
 let counter = 0;
 const newId = () => `m${Date.now().toString(36)}${(counter++).toString(36)}`;
@@ -62,14 +55,8 @@ function friendlyError(error: unknown): string {
   return `Something went wrong on my side. Please try again, or call us at ${PRACTICE_PHONE}.`;
 }
 
-/** What the patient told us about the emergency. The server's own summary
- *  (`reason`) wins; otherwise the most descriptive recent patient message,
- *  since the latest one is often just "yes, 2 PM works". */
-function emergencySummary(card: AppointmentSummary, thread: ChatMessage[]): string {
-  if (card.reason?.trim()) return card.reason.trim();
-  const recent = thread.filter((m): m is PatientMessage => m.role === "patient").slice(-4);
-  return recent.reduce((best, m) => (m.text.length > best.length ? m.text : best), "") || "A dental emergency";
-}
+const patientTexts = (thread: ChatMessage[]) =>
+  thread.filter((m): m is PatientMessage => m.role === "patient").map((m) => m.text);
 
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -104,20 +91,13 @@ export function useChat() {
     setRestoring(true);
     fetchTranscript(id, controller.signal)
       .then((history) => {
+        const restored = restoreThread(history, timeOf);
+        // Staff were already announced in the restored thread; don't do it again.
+        escalatedRef.current = restored.escalated;
         setConversationId(id);
         setMessages(
-          history.map((m): ChatMessage =>
-            m.role === "patient"
-              ? { id: newId(), role: "patient", text: m.text }
-              : {
-                  id: newId(),
-                  role: "assistant",
-                  text: m.text,
-                  appointments: [],
-                  staffNotified: false,
-                  degraded: false,
-                  streamed: true,
-                },
+          restored.messages.map((m): ChatMessage =>
+            m.role === "patient" ? { id: newId(), ...m } : { id: newId(), ...m, streamed: true },
           ),
         );
       })
@@ -201,10 +181,7 @@ export function useChat() {
         remember(reply.conversationId);
         const streamed = streamedText(stream).length > 0;
         const at = new Date();
-        const emergencyCard = reply.appointments?.find(
-          (a) => a.typeLabel === EMERGENCY_TYPE && a.action !== "cancelled",
-        );
-        const newlyEscalated = Boolean(reply.escalated) && !escalatedRef.current;
+        const alreadyEscalated = escalatedRef.current;
         escalatedRef.current ||= Boolean(reply.escalated);
 
         setMessages((list) => [
@@ -214,13 +191,7 @@ export function useChat() {
             role: "assistant",
             text: reply.reply,
             at,
-            appointments: reply.appointments ?? [],
-            // The emergency notice and the degraded alert already say the team was told.
-            staffNotified: newlyEscalated && !emergencyCard && !reply.degraded,
-            emergency: emergencyCard
-              ? { summary: emergencySummary(emergencyCard, list), notifiedAt: timeOf(at) }
-              : undefined,
-            degraded: Boolean(reply.degraded),
+            ...turnAttachments(reply, { alreadyEscalated, patientTexts: patientTexts(list), notifiedAt: timeOf(at) }),
             streamed,
           },
         ]);
