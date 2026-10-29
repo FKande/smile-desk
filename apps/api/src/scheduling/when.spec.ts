@@ -29,7 +29,14 @@ describe('resolveWhen', () => {
     ['end of next month', { period: 'next_month', portion: 'late' }, '2026-12-21', '2026-12-31'],
     ['later this month', { period: 'this_month', portion: 'late' }, '2026-11-21', '2026-11-30'],
     ['early January', { month: 1, portion: 'early' }, '2027-01-01', '2027-01-10'],
+    ['early May (six months ahead)', { month: 5, portion: 'early' }, '2027-05-01', '2027-05-10'],
+    ['June (seven months ahead)', { month: 6 }, '2027-06-01', '2027-06-30'],
+    ['my next cleaning in 6 months', { inMonths: 6 }, '2027-05-01', '2027-05-31'],
+    ['early in 6 months', { inMonths: 6, portion: 'early' }, '2027-05-01', '2027-05-10'],
+    ['late in 7 months', { inMonths: 7, portion: 'late' }, '2027-06-21', '2027-06-30'],
+    ['in a month', { inMonths: 1 }, '2026-12-01', '2026-12-31'],
     ['in two weeks', { inWeeks: 2 }, '2026-11-16', '2026-11-22'],
+    ['in 31 weeks', { inWeeks: 31 }, '2027-06-07', '2027-06-13'],
     ['in a couple of days', { inDays: 2 }, '2026-11-04', '2026-11-04'],
     ['Thursday', { weekday: 'thursday' }, '2026-11-05', '2026-11-05'],
     ['next Tuesday', { period: 'next_week', weekday: 'tuesday' }, '2026-11-10', '2026-11-10'],
@@ -65,6 +72,10 @@ describe('resolveWhen', () => {
     ['an invalid date', { date: '2026-02-31' }, MONDAY],
     ['an impossible month', { month: 13 }, MONDAY],
     ['a negative offset', { inWeeks: -1 }, MONDAY],
+    ['more than 7 months out', { inMonths: 8 }, MONDAY],
+    ['more than 31 weeks out', { inWeeks: 32 }, MONDAY],
+    ['inMonths with a period', { inMonths: 6, period: 'next_month' }, MONDAY],
+    ['inMonths with a named month', { inMonths: 6, month: 5 }, MONDAY],
   ])('rejects %s with a message the bot can act on', (_case, spec, now) => {
     expect(() => resolveWhen(spec, now)).toThrow(ValidationError);
   });
