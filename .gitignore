@@ -45,8 +45,12 @@ next-env.d.ts
 /_private/
 /CLAUDE.local.md
 /.claude/skills/assignment/
+/.claude/settings.local.json
 /.agents/
 /AGENTS.override.md
+
+# local SQLite database (created and seeded on first boot)
+apps/api/data/
 
 # keep the env template
 !.env.example
