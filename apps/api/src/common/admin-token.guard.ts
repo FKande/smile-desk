@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, ServiceUnavailableException,
 import type { Request } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 
-/** Protects staff and settings routes with the ADMIN_TOKEN env var (header: x-admin-token). */
+/** Protects the settings routes (/admin/llm) with the ADMIN_TOKEN env var (header: x-admin-token). */
 @Injectable()
 export class AdminTokenGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
