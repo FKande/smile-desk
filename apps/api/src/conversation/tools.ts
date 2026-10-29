@@ -399,7 +399,7 @@ export function buildTools(deps: ToolDeps) {
           notifications.notifyStaff({
             kind: 'emergency',
             priority: 'urgent',
-            summary: `${appt.patientName} (${formatPhone(patient.phone)}): ${appt.reason}. Booked ${appt.label} with ${appt.providerName}.`,
+            summary: `${appt.patientName} (${formatPhone(patient.phone)}): ${(appt.reason ?? '').replace(/[.\s]+$/, '')}. Booked ${appt.label} with ${appt.providerName}.`,
             patientId: appt.patientId,
             conversationId: session.conversationId,
             details: { appointmentId: appt.appointmentId },
