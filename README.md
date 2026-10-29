@@ -34,7 +34,7 @@ Data is seeded relative to today: about seven months of Mon–Sat slots, about 5
 
 | Seeded patient | Date of birth | Good for |
 | --- | --- | --- |
-| Sarah Johnson | 1988-04-12 | Cleaning booked ~5 days out; spouse Michael (1986-09-03); kids Emma (2016-02-20), Liam (2019-07-08) |
+| Sarah Johnson | 1988-04-12 | Cleaning booked about 5 days out; spouse Michael (1986-09-03); kids Emma (2016-02-20), Liam (2019-07-08) |
 | David Chen | 1975-11-30 and 1992-03-14 | Two different patients with the same name |
 | Maria Garcia | 1995-06-21 | Self-pay (no insurance) |
 | Robert Williams | 1948-01-15 | Older patient: try the A+ / A++ text size |
@@ -88,7 +88,7 @@ sequenceDiagram
 | Brief item | How | Where |
 | --- | --- | --- |
 | New patient intake (name, phone, DOB, insurance) | Collected, read back, registered on a clear yes | `register_patient` |
-| Sample slots; cleaning, checkup, emergency (summary, staff told) | About seven months seeded (bookable up to ~7 months ahead, e.g. six-month follow-ups); 60 / 30 / 30 min; emergency needs a `reason`, urgent alert written in code | `database/seed.ts`, `book_appointments` |
+| Sample slots; cleaning, checkup, emergency (summary, staff told) | About seven months seeded (bookable up to about 7 months ahead, e.g. six-month follow-ups); 60 / 30 / 30 min; emergency needs a `reason`, urgent alert written in code | `database/seed.ts`, `book_appointments` |
 | Verify; follow-up, reschedule, cancel | Name + DOB (+ phone), no leak; confirm first, cancel offers a reschedule | `verify_patient`, `reschedule_appointment` |
 | Family and back-to-back | Guardian/spouse rules, all-or-nothing booking | `find_back_to_back_slots` |
 | Subjective dates, times that don't work | Model extracts a `when` spec, code does the math; re-search with alternatives | `scheduling/when.ts` |
@@ -137,7 +137,7 @@ Live testing added a 30-minute minimum lead time, no patient in two chairs at on
 | Bad input | 400/404 before any model call; 20 chat messages/min per client |
 | Prompt injection | Declined; identity and permissions enforced in code |
 
-**Cost:** about 8 model calls per conversation, each reading ~7k cached tokens (Opus 5.5 cache reads ≈ 5% of input price) and writing 200–300 output tokens.
+**Cost:** about 8 model calls per conversation, each reading about 7k cached tokens (Opus 5.5 cache reads ≈ 5% of input price) and writing 200–300 output tokens.
 Claude Opus 5.5 ≈ $0.05–0.06 per conversation (about $500–600 a day at 10k); Sonnet 5.5 ≈ half; Haiku 5.5 ≈ $0.002 (about $20 a day).
 Levers: caching (done), effort/verbosity settings, the cheapest model that passes evals, routing FAQ turns to a cheap model.
 
