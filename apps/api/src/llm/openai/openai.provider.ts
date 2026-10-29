@@ -97,6 +97,8 @@ export class OpenAiProvider implements LlmProvider {
       reasoning,
       text: { verbosity: s.verbosity },
       store: s.store,
+      // With store off, reasoning must come back encrypted so the next turn can replay it.
+      ...(s.store ? {} : { include: ['reasoning.encrypted_content' as const] }),
       truncation: s.truncation,
       service_tier: s.serviceTier,
       ...(s.promptCacheKey === 'per_location' ? { prompt_cache_key: `smile-desk:${PRACTICE.locationId}` } : {}),
