@@ -51,7 +51,8 @@ export function AlertQueue() {
   const [acking, setAcking] = useState<ReadonlySet<string>>(() => new Set());
   const [refreshing, setRefreshing] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  // 0 until the first load: the page prerenders, and nothing shows a time before data arrives.
+  const [now, setNow] = useState(0);
 
   // Every id this tab has seen. The first load after a filter change only
   // records ids, so switching views doesn't flag old alerts as new.
@@ -75,7 +76,9 @@ export function AlertQueue() {
 
         setItems(list);
         setError(null);
-        setUpdatedAt(Date.now());
+        const loadedAt = Date.now();
+        setUpdatedAt(loadedAt);
+        setNow(loadedAt);
         setFreshIds(new Set(arrivals.map((n) => n.id)));
         const urgent = arrivals.filter((n) => n.priority === "urgent" && n.status === "open");
         if (urgent.length === 1) setAnnouncement(`New urgent alert: ${urgent[0].summary}`);

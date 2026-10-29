@@ -38,7 +38,8 @@ export function FeedbackList() {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [viewing, setViewing] = useState<FeedbackEntry | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  // 0 until the first load: the page prerenders, and nothing shows a time before data arrives.
+  const [now, setNow] = useState(0);
   // Only the latest request may write state (a slow one can't overwrite a newer filter).
   const requestSeq = useRef(0);
 
@@ -50,7 +51,9 @@ export function FeedbackList() {
         if (seq !== requestSeq.current) return;
         setItems(list);
         setError(null);
-        setUpdatedAt(Date.now());
+        const loadedAt = Date.now();
+        setUpdatedAt(loadedAt);
+        setNow(loadedAt);
       } catch (caught) {
         if (signal?.aborted || seq !== requestSeq.current) return;
         setError(caught instanceof StaffApiError ? caught : new StaffApiError(null, "Something went wrong."));
