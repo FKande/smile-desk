@@ -24,8 +24,12 @@ export const anthropicSettingsSchema = z
     toolChoice: z.enum(['auto', 'any', 'none']).default('auto'),
     /** At most one tool call per turn. */
     disableParallelToolUse: z.boolean().default(false),
-    /** Guarantees tool inputs validate against their schemas. */
-    strictTools: z.boolean().default(true),
+    /**
+     * Grammar-constrained tool inputs. Off by default: strict mode caps how many optional
+     * fields all tools may declare (our 11 tools exceed it), and every tool input is
+     * validated server-side with Zod regardless.
+     */
+    strictTools: z.boolean().default(false),
     /** Stream tool inputs as they are generated (streaming only); inputs are re-validated server-side by us. */
     eagerInputStreaming: z.boolean().default(true),
     stopSequences: z.array(z.string().min(1).max(64)).max(8).default([]),
