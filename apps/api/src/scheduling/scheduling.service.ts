@@ -96,7 +96,10 @@ interface AppointmentRow {
 
 const MIN_LEAD_MINUTES = 30;
 const DEFAULT_WINDOW_DAYS = 14;
-const MAX_WINDOW_DAYS = 90;
+// Caps the length of one search, not how far ahead it starts: "early May" or a
+// window six months out is short and always allowed. 215 days (~7 months) lets
+// one search span from today to a 6-month follow-up and a bit beyond.
+const MAX_WINDOW_DAYS = 215;
 const MAX_GROUP_SIZE = 6;
 
 const toOpenSlot = (r: SlotRow): OpenSlot => ({
