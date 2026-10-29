@@ -223,7 +223,7 @@ Patients range from teenagers to grandparents booking for the whole family, so t
 
 - **Three token tiers** in `apps/web/src/styles/`: OKLCH primitive ramps → semantic roles as `light-dark()` pairs → component tokens. Tailwind v4's default palette is switched off and only semantic roles are exposed, so off-system colors can't be typed.
 - **Accessibility at the token level:** Atkinson Hyperlegible Next at 17 px body text, 44 px minimum touch targets, a patient-facing text-size setting (A / A+ / A++), light / dark / system themes applied before first paint, solid focus outlines, status never shown by color alone, reduced-motion support, and native form controls and `<dialog>`. The streaming bubble is hidden from screen readers, which hear the finished reply once.
-- **Guarded by tests in CI:** `tokens.test.mjs` computes WCAG contrast for 95 color pairs per theme (AA everywhere, AAA for body text, 3:1 for control borders and focus rings), and `token-usage.test.mjs` fails if a component uses a raw color, a primitive, a default-palette class or `dark:`.
+- **Guarded by tests in CI:** `tokens.test.mjs` computes WCAG contrast for 93 color pairs per theme (AA everywhere, AAA for body text, 3:1 for control borders and focus rings), and `token-usage.test.mjs` fails if a component uses a raw color, a primitive, a default-palette class or `dark:`.
 - **Phone first:** checked at 360–1440 px at default and largest text size. The catalog's Chat page has a Phone / Desktop preview switch.
 - **No new dependencies:** inline SVG icons, fonts self-hosted by `next/font`, and hand-written contrast math.
 
