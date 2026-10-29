@@ -16,7 +16,7 @@ import { PRACTICE_PHONE } from "./practice";
 /* The patient chat's state: the thread, the reply in flight, the last error.
  * One turn at a time; sending while a reply streams is ignored, not queued. */
 
-export type PatientMessage = { id: string; role: "patient"; text: string; at?: Date; failed?: boolean };
+export type PatientMessage = { id: string; role: "patient"; text: string; at?: Date };
 
 export type AssistantMessage = {
   id: string;
@@ -146,11 +146,8 @@ export function useChat() {
 
       const patientId = retryOf ?? newId();
       setError(null);
-      setMessages((list) =>
-        retryOf
-          ? list.map((m) => (m.id === retryOf ? { ...m, failed: false } : m))
-          : [...list, { id: patientId, role: "patient", text, at: new Date() }],
-      );
+      // A retry reuses the patient's bubble; the error alert is the only retry control.
+      if (!retryOf) setMessages((list) => [...list, { id: patientId, role: "patient", text, at: new Date() }]);
       setLive({ text: "", status: null });
 
       const controller = new AbortController();
@@ -218,8 +215,8 @@ export function useChat() {
             text: reply.reply,
             at,
             appointments: reply.appointments ?? [],
-            // The emergency notice already says the team was told.
-            staffNotified: newlyEscalated && !emergencyCard,
+            // The emergency notice and the degraded alert already say the team was told.
+            staffNotified: newlyEscalated && !emergencyCard && !reply.degraded,
             emergency: emergencyCard
               ? { summary: emergencySummary(emergencyCard, list), notifiedAt: timeOf(at) }
               : undefined,
@@ -229,7 +226,6 @@ export function useChat() {
         ]);
       } catch (err) {
         if (controller.signal.aborted) return;
-        setMessages((list) => list.map((m) => (m.id === patientId ? { ...m, failed: true } : m)));
         setError({ message: friendlyError(err), retryText: text, patientId });
       } finally {
         if (abortRef.current === controller) {

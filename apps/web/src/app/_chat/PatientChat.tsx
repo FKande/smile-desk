@@ -13,7 +13,6 @@ import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { Spinner } from "@/components/feedback/Spinner";
 import { TextSizeToggle, ThemeToggle } from "@/components/theme/PreferenceControls";
 import { Alert } from "@/components/ui/Alert";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { isMockMode, MAX_MESSAGE_LENGTH, type AppointmentSummary } from "@/lib/chat-client";
 import { FeedbackPrompt } from "./FeedbackPrompt";
@@ -84,7 +83,10 @@ export function PatientChat() {
       : "Enter to send, Shift + Enter for a new line";
 
   return (
-    <div className="flex h-dvh flex-col bg-canvas">
+    // The thread scrolls, never the page: sr-only labels inside the log are
+    // absolutely positioned relative to MessageList's (non-scrolling) wrapper,
+    // so without the clip they would stretch the document.
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-canvas">
       <ChatHeader
         assistantName={ASSISTANT_NAME}
         practiceName={PRACTICE_NAME}
@@ -92,13 +94,16 @@ export function PatientChat() {
         onTalkToPerson={() => send(TALK_TO_PERSON)}
         controls={
           <>
-            {mock ? (
-              <Badge tone="warning" icon="info" className="mr-auto">
-                Mock mode
-              </Badge>
-            ) : null}
-            <Button variant="ghost" iconStart="plus" onClick={startOver}>
-              New conversation
+            {/* Collapses to its icon on phones, like "Talk to a person", so
+                the controls stay on one row. */}
+            <Button
+              variant="ghost"
+              iconStart="plus"
+              onClick={startOver}
+              title="New conversation"
+              className="@max-md:w-(--control-h-md) @max-md:px-0"
+            >
+              <span className="@max-md:sr-only">New conversation</span>
             </Button>
             <TextSizeToggle />
             <ThemeToggle />
@@ -128,7 +133,7 @@ export function PatientChat() {
           ) : null}
 
           {chat.messages.map((message, i) => (
-            <Message key={message.id} message={message} position={runPositions[i]} onRetry={chat.retry} />
+            <Message key={message.id} message={message} position={runPositions[i]} />
           ))}
 
           {chat.live ? (
@@ -163,7 +168,12 @@ export function PatientChat() {
             busy={chat.busy || tooLong}
             label={`Message ${ASSISTANT_NAME}`}
             placeholder="Type your message"
-            hint={<span className={tooLong ? "text-danger-text" : undefined}>{hint}</span>}
+            hint={
+              <>
+                {mock ? <span className="font-semibold text-warning-text">Mock mode, scripted replies. </span> : null}
+                <span className={tooLong ? "text-danger-text" : undefined}>{hint}</span>
+              </>
+            }
           />
         </div>
       </div>
@@ -199,15 +209,7 @@ function Welcome({ picked, locked, onPick }: { picked?: string; locked: boolean;
   );
 }
 
-function Message({
-  message,
-  position,
-  onRetry,
-}: {
-  message: ChatMessage;
-  position: MessagePosition;
-  onRetry: () => void;
-}) {
+function Message({ message, position }: { message: ChatMessage; position: MessagePosition }) {
   if (message.role === "system") {
     return <MessageBubble sender="system">{message.text}</MessageBubble>;
   }
@@ -222,8 +224,6 @@ function Message({
         position={position}
         timestamp={timestamp}
         dateTime={dateTime}
-        status={message.failed ? "failed" : "sent"}
-        onRetry={onRetry}
         animate={Boolean(message.at)}
       >
         {message.text}
@@ -295,18 +295,18 @@ function Appointment({ appointment }: { appointment: AppointmentSummary }) {
   const visit = VISIT_TYPES[appointment.typeLabel] ?? VISIT_TYPES["General checkup"];
   // "Tue, Nov 4 at 9:30 AM" → date and time.
   const [date, time = ""] = appointment.label.split(" at ");
-  const who = appointment.providerName
-    ? `${appointment.patientName} · with ${appointment.providerName}`
-    : appointment.patientName;
+  // The provider rides on the "Where" line: the header row is too narrow on a
+  // phone for "For <patient> · with <provider>" next to the status badge.
+  const where = appointment.providerName ? `With ${appointment.providerName}, ${PRACTICE_LOCATION}` : PRACTICE_LOCATION;
   return (
     <AppointmentCard
       type={visit.type}
       status={cardStatus[appointment.action] ?? "confirmed"}
-      patientName={who}
+      patientName={appointment.patientName}
       date={date}
       time={time}
       duration={visit.duration}
-      location={PRACTICE_LOCATION}
+      location={where}
     />
   );
 }
