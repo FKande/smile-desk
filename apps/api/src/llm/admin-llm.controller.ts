@@ -8,7 +8,7 @@ import { LlmSettingsService } from './llm-settings.service.js';
 const SECTIONS = ['harness', 'anthropic', 'openai'] as const;
 const patchBody = z.object(Object.fromEntries(SECTIONS.map((s) => [s, z.record(z.string(), z.unknown()).optional()]))).strict();
 
-/** Settings panel API: read every knob with its source, change any of them live, or reset. */
+/** Live settings API (/admin/llm): read every knob with its source, change any of them live, or reset. */
 @Controller('admin/llm')
 @UseGuards(AdminTokenGuard)
 export class AdminLlmController {

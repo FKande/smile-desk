@@ -44,11 +44,11 @@ export function FieldRenderPropDemo() {
   );
 }
 
-const family = ["Maya (me)", "Daniel", "Leo, age 7"] as const;
+const family = ["Sarah (me)", "Michael", "Liam, age 7"] as const;
 
 /** Parent "select all" with a mixed state, as used for family bookings. */
 export function FamilyCheckboxDemo() {
-  const [selected, setSelected] = useState<string[]>(["Maya (me)"]);
+  const [selected, setSelected] = useState<string[]>(["Sarah (me)"]);
   const all = selected.length === family.length;
   const some = selected.length > 0 && !all;
   return (

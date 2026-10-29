@@ -12,7 +12,7 @@ import {
 import { OPENAI_MODELS, openAiSettingsSchema, resolveOpenAiSettings } from './openai/openai.settings.js';
 
 // Settings resolve in three layers: built-in defaults < environment variables <
-// overrides saved from the settings UI. Secrets never enter this service's
+// overrides saved through PUT /admin/llm. Secrets never enter this service's
 // output: API keys stay in the environment and are reported only as set/unset.
 
 export const harnessSettingsSchema = z
@@ -74,7 +74,7 @@ export class LlmSettingsService {
     return this.build().settings;
   }
 
-  /** Everything the settings UI needs: values, where each came from, model rules, warnings. */
+  /** Everything GET /admin/llm returns: values, where each came from, model rules, warnings. */
   describe() {
     const { settings, sources } = this.build();
     const anthropic = resolveAnthropicSettings(settings.anthropic);

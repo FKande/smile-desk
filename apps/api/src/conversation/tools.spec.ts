@@ -11,6 +11,22 @@ describe('tools', () => {
     tools = buildTools({ patients: ctx.patients, scheduling: ctx.scheduling, notifications: ctx.notifications, clock: ctx.clock });
   });
 
+  describe('end times', () => {
+    it('gives the model when each offered slot and existing appointment ends', () => {
+      const slots = JSON.parse(tools.execute('find_open_slots', { appointment_type: 'checkup', when: { period: 'next_week' } }, session()).output);
+      expect(slots.options[0]).toMatchObject({ time: expect.any(String), ends: expect.stringMatching(/^\d{1,2}:\d{2} [AP]M$/) });
+
+      const s = session();
+      const verified = JSON.parse(tools.execute('verify_patient', { first_name: 'Robert', last_name: 'Williams', date_of_birth: '1948-01-15' }, s).output);
+      const checkup = verified.upcoming_appointments[0];
+      const minutes = (t: string) => {
+        const [, h, m, ap] = t.match(/(\d{1,2}):(\d{2}) ([AP]M)/)!;
+        return ((Number(h) % 12) + (ap === 'PM' ? 12 : 0)) * 60 + Number(m);
+      };
+      expect(minutes(checkup.ends) - minutes(checkup.time)).toBe(30); // checkups are 30 minutes
+    });
+  });
+
   describe('notify_staff', () => {
     const ask = { kind: 'escalation', urgency: 'normal', summary: 'Wants to talk to a person about a bill' };
 

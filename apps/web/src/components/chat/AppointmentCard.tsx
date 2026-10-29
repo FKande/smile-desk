@@ -64,7 +64,7 @@ export function AppointmentCard({
   date,
   time,
   duration,
-  location = "Bright Smile Dental, 120 Main Street",
+  location = "Smile Desk Dental, 120 Market St, Suite 400, San Francisco",
   previousTime,
   reference,
   onReschedule,

@@ -159,8 +159,8 @@ export default function Page() {
               <option>General checkup</option>
               <option>Emergency</option>
             </SelectField>
-            <SelectField label="Location" defaultValue="Main Street" disabled>
-              <option>Main Street</option>
+            <SelectField label="Location" defaultValue="Market St" disabled>
+              <option>Market St</option>
             </SelectField>
           </div>
         </Stage>
