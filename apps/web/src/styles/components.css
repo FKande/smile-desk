@@ -1,0 +1,219 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TIER 3: COMPONENT TOKENS
+
+   Per-component decisions, each pointing at a tier-2 semantic token (never
+   at a --p-* primitive). Components read these through Tailwind's var
+   shorthand, e.g. bg-(--button-primary-bg). A redesign of one component
+   happens here without touching its markup or any other component.
+
+   Sizes are in rem so the patient's text-size setting (base.css) scales
+   controls along with their labels. 2.75rem = 44px at default size, the
+   touch-target floor we hold ourselves to (WCAG 2.2 AA asks only 24px).
+
+   Declared on [data-theme] too, so tokens re-resolve inside a themed
+   subtree (see the note at the top of the token block in semantic.css).
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme] {
+  /* ---------- Shared control geometry ---------- */
+  --control-h-sm: 2.25rem; /* 36px: dense, pointer-first contexts only */
+  --control-h-md: 2.75rem; /* 44px: the default everywhere a patient taps */
+  --control-h-lg: 3.25rem; /* 52px: primary calls to action */
+  --control-radius: var(--radius-md);
+
+  /* ---------- Button ---------- */
+  --button-radius: var(--radius-full);
+  --button-primary-bg: var(--brand-solid);
+  --button-primary-bg-hover: var(--brand-solid-hover);
+  --button-primary-fg: var(--fg-on-brand);
+  --button-secondary-bg: var(--bg-surface);
+  --button-secondary-bg-hover: var(--bg-hover);
+  --button-secondary-fg: var(--fg-default);
+  --button-secondary-border: var(--border-strong);
+  --button-secondary-border-hover: var(--border-hover);
+  --button-ghost-fg: var(--fg-secondary);
+  --button-ghost-bg-hover: var(--bg-hover);
+  --button-danger-bg: var(--danger-solid);
+  --button-danger-bg-hover: var(--danger-solid-hover);
+  --button-danger-fg: var(--fg-on-danger);
+  --button-disabled-bg: var(--bg-disabled);
+  --button-disabled-fg: var(--fg-disabled);
+
+  /* ---------- Text inputs, textarea, select ---------- */
+  --input-bg: var(--bg-surface);
+  --input-bg-disabled: var(--bg-disabled);
+  --input-fg: var(--fg-default);
+  --input-placeholder: var(--fg-muted);
+  --input-border: var(--border-strong);
+  --input-border-hover: var(--border-hover);
+  --input-border-focus: var(--brand-solid);
+  --input-border-invalid: var(--danger-solid);
+  --input-bg-readonly: var(--bg-subtle);
+  --input-icon: var(--fg-muted);
+  --field-error-fg: var(--danger-text);
+
+  /* ---------- Switch / checkbox ---------- */
+  --check-bg: var(--bg-surface);
+  --check-border: var(--border-strong);
+  --check-bg-checked: var(--brand-solid);
+  --check-fg-checked: var(--fg-on-brand);
+  --check-border-hover: var(--border-hover);
+  --check-border-invalid: var(--danger-solid);
+  --check-radius: var(--radius-xs);
+  --switch-track: var(--bg-active);
+  /* The fill alone is too faint against a surface; the border carries the
+     3:1 non-text contrast (WCAG 1.4.11) for the off state. */
+  --switch-track-border: var(--border-strong);
+  --switch-track-border-hover: var(--border-hover);
+  --switch-track-checked: var(--brand-solid);
+  --switch-track-checked-hover: var(--brand-solid-hover);
+  --switch-thumb-disabled: var(--fg-disabled);
+  --switch-thumb: var(--p-white); /* sanctioned: the thumb is white in both schemes */
+
+  /* ---------- Card ---------- */
+  --card-bg: var(--bg-surface);
+  --card-border: var(--border-subtle);
+  --card-radius: var(--radius-xl);
+  --card-shadow: var(--elevation-card);
+  --card-border-hover: var(--border-hover); /* interactive cards only */
+  --card-shadow-hover: var(--elevation-overlay);
+
+  /* ---------- Alert ---------- */
+  --alert-radius: var(--radius-lg);
+
+  /* ---------- Dialog, toast, popover ---------- */
+  --dialog-bg: var(--bg-surface-raised);
+  --dialog-radius: var(--radius-2xl);
+  --dialog-shadow: var(--elevation-modal);
+  --dialog-scrim: var(--scrim);
+  --toast-bg: var(--bg-inverse);
+  --toast-fg: var(--fg-inverse);
+  --toast-radius: var(--radius-lg);
+  --toast-shadow: var(--elevation-overlay);
+
+  /* ---------- Avatar ---------- */
+  --avatar-assistant-bg: var(--brand-subtle);
+  --avatar-assistant-fg: var(--brand-text);
+  --avatar-patient-bg: var(--bg-muted);
+  --avatar-patient-fg: var(--fg-secondary);
+  --avatar-staff-bg: var(--info-subtle);
+  --avatar-staff-fg: var(--info-text);
+
+  /* ---------- Chat: message bubbles ---------- */
+  --bubble-radius: var(--radius-xl);
+  --bubble-radius-tail: var(--radius-xs); /* the corner nearest the speaker */
+  --bubble-patient-bg: var(--brand-solid);
+  --bubble-patient-fg: var(--fg-on-brand);
+  --bubble-assistant-bg: var(--bg-surface);
+  --bubble-assistant-fg: var(--fg-default);
+  --bubble-assistant-border: var(--border-subtle);
+  --bubble-system-fg: var(--fg-muted);
+
+  /* ---------- Chat: composer ---------- */
+  --composer-bg: var(--bg-surface);
+  --composer-border: var(--border-strong);
+  --composer-border-focus: var(--brand-solid);
+  --composer-radius: var(--radius-2xl);
+
+  /* ---------- Chat: quick-reply chips ---------- */
+  --chip-bg: var(--brand-subtle);
+  --chip-bg-hover: var(--brand-element);
+  --chip-fg: var(--brand-text);
+  --chip-border: var(--brand-border);
+  --chip-bg-selected: var(--brand-solid); /* the reply the patient picked */
+  --chip-fg-selected: var(--fg-on-brand);
+
+  /* ---------- Chat: appointment slots ---------- */
+  --slot-bg: var(--bg-surface);
+  --slot-bg-hover: var(--brand-subtle);
+  --slot-fg: var(--fg-default);
+  --slot-border: var(--border-strong);
+  --slot-border-hover: var(--brand-solid);
+  --slot-bg-selected: var(--brand-solid);
+  --slot-fg-selected: var(--fg-on-brand);
+  --slot-bg-unavailable: var(--bg-subtle);
+  --slot-fg-unavailable: var(--fg-disabled);
+
+  /* ---------- Loaders ---------- */
+  --skeleton-base: var(--bg-muted);
+  --skeleton-shine: var(--bg-surface);
+  --spinner-track: var(--border-subtle);
+  --progress-track: var(--bg-muted);
+  --progress-fill: var(--brand-solid);
+  --tooth-loader-fill: var(--brand-subtle);
+  --tooth-loader-stroke: var(--brand-solid);
+  --tooth-loader-sheen: var(--brand-border);
+  /* Slower than the progress sweep: a calm "checking", not a busy one. */
+  --tooth-loader-duration: calc(var(--duration-loop-sweep) * 1.5);
+  --typing-dot: var(--fg-muted);
+}
+
+/* ═══ TONE SCOPES ═══════════════════════════════════════════════════
+   One attribute retargets every --tone-* token to an intent, so Badge,
+   Alert, AppointmentCard status and the emergency notice share one
+   implementation: <div data-tone="danger"> … bg-(--tone-subtle) …
+   ═══════════════════════════════════════════════════════════════════ */
+[data-tone="neutral"] {
+  --tone-subtle: var(--bg-subtle);
+  --tone-element: var(--bg-muted);
+  --tone-border: var(--border-default);
+  --tone-solid: var(--bg-inverse);
+  --tone-solid-hover: var(--fg-secondary);
+  --tone-text: var(--fg-secondary);
+  --tone-on-solid: var(--fg-inverse);
+}
+[data-tone="brand"] {
+  --tone-subtle: var(--brand-subtle);
+  --tone-element: var(--brand-element);
+  --tone-border: var(--brand-border);
+  --tone-solid: var(--brand-solid);
+  --tone-solid-hover: var(--brand-solid-hover);
+  --tone-text: var(--brand-text);
+  --tone-on-solid: var(--fg-on-brand);
+}
+[data-tone="accent"] {
+  --tone-subtle: var(--accent-subtle);
+  --tone-element: var(--accent-element);
+  --tone-border: var(--accent-border);
+  --tone-solid: var(--accent-solid);
+  --tone-solid-hover: var(--accent-solid-hover);
+  --tone-text: var(--accent-text);
+  --tone-on-solid: var(--fg-on-accent);
+}
+[data-tone="success"] {
+  --tone-subtle: var(--success-subtle);
+  --tone-element: var(--success-element);
+  --tone-border: var(--success-border);
+  --tone-solid: var(--success-solid);
+  --tone-solid-hover: var(--success-solid-hover);
+  --tone-text: var(--success-text);
+  --tone-on-solid: var(--fg-on-success);
+}
+[data-tone="warning"] {
+  --tone-subtle: var(--warning-subtle);
+  --tone-element: var(--warning-element);
+  --tone-border: var(--warning-border);
+  --tone-solid: var(--warning-solid);
+  --tone-solid-hover: var(--warning-solid-hover);
+  --tone-text: var(--warning-text);
+  --tone-on-solid: var(--fg-on-warning);
+}
+[data-tone="danger"] {
+  --tone-subtle: var(--danger-subtle);
+  --tone-element: var(--danger-element);
+  --tone-border: var(--danger-border);
+  --tone-solid: var(--danger-solid);
+  --tone-solid-hover: var(--danger-solid-hover);
+  --tone-text: var(--danger-text);
+  --tone-on-solid: var(--fg-on-danger);
+}
+[data-tone="info"] {
+  --tone-subtle: var(--info-subtle);
+  --tone-element: var(--info-element);
+  --tone-border: var(--info-border);
+  --tone-solid: var(--info-solid);
+  --tone-solid-hover: var(--info-solid-hover);
+  --tone-text: var(--info-text);
+  --tone-on-solid: var(--fg-on-info);
+}

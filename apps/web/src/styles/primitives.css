@@ -1,0 +1,231 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TIER 1: PRIMITIVES
+
+   Raw values with no meaning. Nothing outside src/styles may reference a
+   --p-* token; components read tier 3 (components.css) or tier 2
+   (semantic.css). tokens.test.mjs enforces this.
+
+   Every ramp is authored in OKLCH on ONE shared lightness ladder, so step N
+   has the same perceived lightness in every hue and "teal-900 on white"
+   behaves like "red-900 on white". Light and dark are separate ramps, tuned
+   for their own background, not inversions of each other.
+
+     step:   100  200  300  400  500  600  700  800  900 1000 1100 1200
+     light:   99 97.3 94.6 91.4 87.6 82.6 75.5   64   52 46.5   40   25
+     dark:  16.5 19.5 23.5   27   31   36   43   52   56   62   80   94
+
+   Step roles (Radix 12-step model):
+     100 app bg · 200 subtle bg · 300 element · 400 hover · 500 active ·
+     600–800 borders (800 = 3:1 control border) · 900 solid fill ·
+     1000 solid hover · 1100 low-contrast text · 1200 high-contrast text
+
+   Hues: teal 192 (brand: clinical, calm), slate 235 (neutral, cool tint
+   toward the brand), coral 40 (warm accent, used sparingly), green 155,
+   amber 75, red 25, blue 250 (success, warning, danger, info).
+   Ramps are generated; edit the ladder rather than single values.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --p-white: oklch(100% 0 0);
+  --p-black: oklch(0% 0 0);
+
+  /* ═══ LIGHT RAMPS ═══ */
+
+  /* teal (brand), hue 192 */
+  --p-teal-100: oklch(99% 0.008 192);
+  --p-teal-200: oklch(97.3% 0.018 192);
+  --p-teal-300: oklch(94.6% 0.032 192);
+  --p-teal-400: oklch(91.4% 0.048 192);
+  --p-teal-500: oklch(87.6% 0.064 192);
+  --p-teal-600: oklch(82.6% 0.080 192);
+  --p-teal-700: oklch(75.5% 0.095 192);
+  --p-teal-800: oklch(64% 0.105 192);
+  --p-teal-900: oklch(52% 0.098 192);
+  --p-teal-1000: oklch(46.5% 0.090 192);
+  --p-teal-1100: oklch(40% 0.076 192);
+  --p-teal-1200: oklch(25% 0.046 192);
+
+  /* slate (neutral), hue 235 */
+  --p-slate-100: oklch(99% 0.003 235);
+  --p-slate-200: oklch(97.3% 0.004 235);
+  --p-slate-300: oklch(94.6% 0.006 235);
+  --p-slate-400: oklch(91.4% 0.008 235);
+  --p-slate-500: oklch(87.6% 0.010 235);
+  --p-slate-600: oklch(82.6% 0.012 235);
+  --p-slate-700: oklch(75.5% 0.014 235);
+  --p-slate-800: oklch(64% 0.016 235);
+  --p-slate-900: oklch(52% 0.018 235);
+  --p-slate-1000: oklch(46.5% 0.018 235);
+  --p-slate-1100: oklch(40% 0.018 235);
+  --p-slate-1200: oklch(25% 0.016 235);
+
+  /* coral (accent), hue 40 */
+  --p-coral-100: oklch(99% 0.010 40);
+  --p-coral-200: oklch(97.3% 0.026 40);
+  --p-coral-300: oklch(94.6% 0.046 40);
+  --p-coral-400: oklch(91.4% 0.070 40);
+  --p-coral-500: oklch(87.6% 0.092 40);
+  --p-coral-600: oklch(82.6% 0.112 40);
+  --p-coral-700: oklch(75.5% 0.130 40);
+  --p-coral-800: oklch(64% 0.142 40);
+  --p-coral-900: oklch(52% 0.150 40);
+  --p-coral-1000: oklch(46.5% 0.140 40);
+  --p-coral-1100: oklch(40% 0.115 40);
+  --p-coral-1200: oklch(25% 0.062 40);
+
+  /* green (success), hue 155 */
+  --p-green-100: oklch(99% 0.010 155);
+  --p-green-200: oklch(97.3% 0.022 155);
+  --p-green-300: oklch(94.6% 0.040 155);
+  --p-green-400: oklch(91.4% 0.060 155);
+  --p-green-500: oklch(87.6% 0.080 155);
+  --p-green-600: oklch(82.6% 0.098 155);
+  --p-green-700: oklch(75.5% 0.115 155);
+  --p-green-800: oklch(64% 0.125 155);
+  --p-green-900: oklch(52% 0.120 155);
+  --p-green-1000: oklch(46.5% 0.110 155);
+  --p-green-1100: oklch(40% 0.090 155);
+  --p-green-1200: oklch(25% 0.052 155);
+
+  /* amber (warning), hue 75 */
+  --p-amber-100: oklch(99% 0.014 75);
+  --p-amber-200: oklch(97.3% 0.036 75);
+  --p-amber-300: oklch(94.6% 0.062 75);
+  --p-amber-400: oklch(91.4% 0.090 75);
+  --p-amber-500: oklch(87.6% 0.115 75);
+  --p-amber-600: oklch(82.6% 0.135 75);
+  --p-amber-700: oklch(75.5% 0.150 75);
+  --p-amber-800: oklch(64% 0.150 75);
+  --p-amber-900: oklch(52% 0.120 75);
+  --p-amber-1000: oklch(46.5% 0.105 75);
+  --p-amber-1100: oklch(40% 0.085 75);
+  --p-amber-1200: oklch(25% 0.050 75);
+
+  /* red (danger), hue 25 */
+  --p-red-100: oklch(99% 0.010 25);
+  --p-red-200: oklch(97.3% 0.024 25);
+  --p-red-300: oklch(94.6% 0.044 25);
+  --p-red-400: oklch(91.4% 0.068 25);
+  --p-red-500: oklch(87.6% 0.092 25);
+  --p-red-600: oklch(82.6% 0.115 25);
+  --p-red-700: oklch(75.5% 0.140 25);
+  --p-red-800: oklch(64% 0.170 25);
+  --p-red-900: oklch(52% 0.180 25);
+  --p-red-1000: oklch(46.5% 0.165 25);
+  --p-red-1100: oklch(40% 0.135 25);
+  --p-red-1200: oklch(25% 0.075 25);
+
+  /* blue (info), hue 250 */
+  --p-blue-100: oklch(99% 0.008 250);
+  --p-blue-200: oklch(97.3% 0.020 250);
+  --p-blue-300: oklch(94.6% 0.036 250);
+  --p-blue-400: oklch(91.4% 0.056 250);
+  --p-blue-500: oklch(87.6% 0.076 250);
+  --p-blue-600: oklch(82.6% 0.096 250);
+  --p-blue-700: oklch(75.5% 0.118 250);
+  --p-blue-800: oklch(64% 0.140 250);
+  --p-blue-900: oklch(52% 0.150 250);
+  --p-blue-1000: oklch(46.5% 0.140 250);
+  --p-blue-1100: oklch(40% 0.115 250);
+  --p-blue-1200: oklch(25% 0.065 250);
+
+  /* ═══ DARK RAMPS ═══ */
+
+  /* teal (brand), hue 192 */
+  --p-teal-dark-100: oklch(16.5% 0.018 192);
+  --p-teal-dark-200: oklch(19.5% 0.024 192);
+  --p-teal-dark-300: oklch(23.5% 0.032 192);
+  --p-teal-dark-400: oklch(27% 0.042 192);
+  --p-teal-dark-500: oklch(31% 0.052 192);
+  --p-teal-dark-600: oklch(36% 0.062 192);
+  --p-teal-dark-700: oklch(43% 0.074 192);
+  --p-teal-dark-800: oklch(52% 0.090 192);
+  --p-teal-dark-900: oklch(56% 0.100 192);
+  --p-teal-dark-1000: oklch(62% 0.100 192);
+  --p-teal-dark-1100: oklch(80% 0.085 192);
+  --p-teal-dark-1200: oklch(94% 0.035 192);
+
+  /* slate (neutral), hue 235 */
+  --p-slate-dark-100: oklch(16.5% 0.006 235);
+  --p-slate-dark-200: oklch(19.5% 0.007 235);
+  --p-slate-dark-300: oklch(23.5% 0.009 235);
+  --p-slate-dark-400: oklch(27% 0.011 235);
+  --p-slate-dark-500: oklch(31% 0.012 235);
+  --p-slate-dark-600: oklch(36% 0.013 235);
+  --p-slate-dark-700: oklch(43% 0.015 235);
+  --p-slate-dark-800: oklch(52% 0.017 235);
+  --p-slate-dark-900: oklch(56% 0.018 235);
+  --p-slate-dark-1000: oklch(62% 0.018 235);
+  --p-slate-dark-1100: oklch(80% 0.012 235);
+  --p-slate-dark-1200: oklch(94% 0.005 235);
+
+  /* coral (accent), hue 40 */
+  --p-coral-dark-100: oklch(16.5% 0.020 40);
+  --p-coral-dark-200: oklch(19.5% 0.030 40);
+  --p-coral-dark-300: oklch(23.5% 0.045 40);
+  --p-coral-dark-400: oklch(27% 0.060 40);
+  --p-coral-dark-500: oklch(31% 0.075 40);
+  --p-coral-dark-600: oklch(36% 0.090 40);
+  --p-coral-dark-700: oklch(43% 0.110 40);
+  --p-coral-dark-800: oklch(52% 0.130 40);
+  --p-coral-dark-900: oklch(56% 0.150 40);
+  --p-coral-dark-1000: oklch(62% 0.150 40);
+  --p-coral-dark-1100: oklch(80% 0.110 40);
+  --p-coral-dark-1200: oklch(94% 0.040 40);
+
+  /* green (success), hue 155 */
+  --p-green-dark-100: oklch(16.5% 0.018 155);
+  --p-green-dark-200: oklch(19.5% 0.026 155);
+  --p-green-dark-300: oklch(23.5% 0.038 155);
+  --p-green-dark-400: oklch(27% 0.052 155);
+  --p-green-dark-500: oklch(31% 0.064 155);
+  --p-green-dark-600: oklch(36% 0.076 155);
+  --p-green-dark-700: oklch(43% 0.092 155);
+  --p-green-dark-800: oklch(52% 0.110 155);
+  --p-green-dark-900: oklch(56% 0.120 155);
+  --p-green-dark-1000: oklch(62% 0.120 155);
+  --p-green-dark-1100: oklch(80% 0.110 155);
+  --p-green-dark-1200: oklch(94% 0.050 155);
+
+  /* amber (warning), hue 75 */
+  --p-amber-dark-100: oklch(16.5% 0.020 75);
+  --p-amber-dark-200: oklch(19.5% 0.030 75);
+  --p-amber-dark-300: oklch(23.5% 0.045 75);
+  --p-amber-dark-400: oklch(27% 0.060 75);
+  --p-amber-dark-500: oklch(31% 0.075 75);
+  --p-amber-dark-600: oklch(36% 0.090 75);
+  --p-amber-dark-700: oklch(43% 0.110 75);
+  --p-amber-dark-800: oklch(52% 0.130 75);
+  --p-amber-dark-900: oklch(56% 0.140 75);
+  --p-amber-dark-1000: oklch(62% 0.140 75);
+  --p-amber-dark-1100: oklch(80% 0.120 75);
+  --p-amber-dark-1200: oklch(94% 0.050 75);
+
+  /* red (danger), hue 25 */
+  --p-red-dark-100: oklch(16.5% 0.020 25);
+  --p-red-dark-200: oklch(19.5% 0.030 25);
+  --p-red-dark-300: oklch(23.5% 0.045 25);
+  --p-red-dark-400: oklch(27% 0.062 25);
+  --p-red-dark-500: oklch(31% 0.080 25);
+  --p-red-dark-600: oklch(36% 0.100 25);
+  --p-red-dark-700: oklch(43% 0.120 25);
+  --p-red-dark-800: oklch(52% 0.150 25);
+  --p-red-dark-900: oklch(56% 0.170 25);
+  --p-red-dark-1000: oklch(62% 0.170 25);
+  --p-red-dark-1100: oklch(80% 0.120 25);
+  --p-red-dark-1200: oklch(94% 0.045 25);
+
+  /* blue (info), hue 250 */
+  --p-blue-dark-100: oklch(16.5% 0.020 250);
+  --p-blue-dark-200: oklch(19.5% 0.030 250);
+  --p-blue-dark-300: oklch(23.5% 0.045 250);
+  --p-blue-dark-400: oklch(27% 0.060 250);
+  --p-blue-dark-500: oklch(31% 0.075 250);
+  --p-blue-dark-600: oklch(36% 0.090 250);
+  --p-blue-dark-700: oklch(43% 0.110 250);
+  --p-blue-dark-800: oklch(52% 0.130 250);
+  --p-blue-dark-900: oklch(56% 0.150 250);
+  --p-blue-dark-1000: oklch(62% 0.150 250);
+  --p-blue-dark-1100: oklch(80% 0.110 250);
+  --p-blue-dark-1200: oklch(94% 0.040 250);
+}

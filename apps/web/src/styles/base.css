@@ -1,0 +1,97 @@
+/* ═══════════════════════════════════════════════════════════════════
+   NON-COLOR TOKENS + BASE
+
+   Motion durations and z-index live here as plain custom properties
+   (Tailwind has no theme namespace for them): duration-(--duration-fast),
+   z-(--z-modal).
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ---------- Durations: one-shot, user-triggered (ceiling 400ms) ---------- */
+  --duration-fast: 120ms; /* hover, press, color and border shifts */
+  --duration-base: 200ms; /* dialogs, toasts, panels, message arrival */
+  --duration-slow: 320ms; /* larger, deliberate transitions */
+
+  /* ---------- Durations: loops (long and repeating, a separate lane) ---------- */
+  --duration-loop-spin: 800ms;
+  --duration-loop-pulse: 1200ms; /* typing dots */
+  --duration-loop-shimmer: 1600ms; /* skeleton sweep */
+  --duration-loop-sweep: 1400ms; /* indeterminate progress bar */
+
+  --press-scale: 0.97;
+
+  /* ---------- Z-index registry ---------- */
+  --z-base: 0;
+  --z-sticky: 10; /* chat header, composer */
+  --z-popover: 40;
+  --z-scrim: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-skip-link: 80;
+
+  /* ---------- Layout ---------- */
+  --chat-max-width: 46rem;
+  --gutter: 1rem;
+}
+
+/* ---------- Text-size preference ----------
+   Patients pick Default / Large / Larger; everything is rem-based, so type,
+   controls and spacing scale together. Set on <html> by the theme script. */
+html {
+  font-size: 100%;
+}
+html[data-text-size="large"] {
+  font-size: 112.5%;
+}
+html[data-text-size="larger"] {
+  font-size: 125%;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--fg-default);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    letter-spacing: var(--text-body--letter-spacing);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background-color: var(--selection);
+    color: var(--fg-default);
+  }
+  /* Fallback focus for anything that does not opt into focus-ring itself. */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Reduced motion ----------
+   Collapse every animation and transition. Loaders stay meaningful because
+   each one also renders a visible or screen-reader text label. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
