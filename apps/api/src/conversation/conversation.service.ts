@@ -44,6 +44,34 @@ const REPLIES = {
   empty: `Sorry, I didn't quite catch that. Could you say it another way?`,
 };
 
+/** Progress callbacks for a streaming caller. All optional; the plain endpoint passes none. */
+export interface ChatEvents {
+  /** The conversation id, before any model work (new conversations get one here). */
+  start?(conversationId: string): void;
+  /** Reply text as the model writes it. */
+  delta?(text: string): void;
+  /** Text streamed since the last step is void (a provider failed mid-reply and another takes over). */
+  reset?(): void;
+  /** A model step ended in tool calls; later text continues the same reply. */
+  step?(): void;
+  /** A tool is about to run, with a label fit to show the patient. */
+  tool?(name: string, label: string): void;
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  get_practice_info: 'Looking that up',
+  verify_patient: 'Finding your record',
+  register_patient: 'Setting up your patient file',
+  add_family_member: 'Adding them to your family',
+  get_my_appointments: 'Checking your appointments',
+  find_open_slots: 'Checking open times',
+  find_back_to_back_slots: 'Finding back-to-back times',
+  book_appointments: 'Booking',
+  reschedule_appointment: 'Rescheduling',
+  cancel_appointment: 'Cancelling',
+  notify_staff: 'Letting our team know',
+};
+
 const ROLE: Record<TranscriptItem['kind'], 'user' | 'assistant' | 'tool'> = {
   user: 'user',
   assistant: 'assistant',
@@ -69,14 +97,23 @@ export class ConversationService {
     this.tools = buildTools({ patients, scheduling, notifications, clock });
   }
 
-  async handleMessage(input: { conversationId?: string; message: string }): Promise<ChatReply> {
+  /**
+   * Validates the input before anything is sent, so a streaming caller can still
+   * answer with a plain 400/404. Returns the normalized message.
+   */
+  validate(input: { conversationId?: string; message: string }): string {
     const message = input.message?.trim() ?? '';
     if (!message) throw new ValidationError('Message is empty');
     if (message.length > MAX_MESSAGE_LENGTH) throw new ValidationError(`Message is longer than ${MAX_MESSAGE_LENGTH} characters`);
+    if (input.conversationId) this.getConversation(input.conversationId);
+    return message;
+  }
 
+  async handleMessage(input: { conversationId?: string; message: string }, events: ChatEvents = {}): Promise<ChatReply> {
+    const message = this.validate(input);
     const conversationId = input.conversationId ?? this.createConversation();
-    const conversation = this.getConversation(conversationId);
-    return this.withLock(conversationId, () => this.runTurn(conversationId, conversation, message));
+    events.start?.(conversationId);
+    return this.withLock(conversationId, () => this.runTurn(conversationId, this.getConversation(conversationId), message, events));
   }
 
   addFeedback(conversationId: string, rating: 1 | -1, comment?: string): void {
@@ -98,7 +135,7 @@ export class ConversationService {
     );
   }
 
-  private async runTurn(conversationId: string, conversation: ConversationRow, message: string): Promise<ChatReply> {
+  private async runTurn(conversationId: string, conversation: ConversationRow, message: string, events: ChatEvents): Promise<ChatReply> {
     const { maxToolIterations, historyLimit } = this.settings.get().harness;
     const session: ToolSession = {
       conversationId,
@@ -109,12 +146,23 @@ export class ConversationService {
 
     this.append(conversationId, { kind: 'user', text: message, context: this.contextBlock(session.actorId) });
     const transcript = this.loadItems(conversationId, historyLimit);
+    // Text from every model step this turn, in order: the reply is what the patient watched stream.
+    const texts: string[] = [];
+    const replyWith = (ending?: string) => [...texts, ...(ending ? [ending] : [])].join('\n\n');
     let reply: string | null = null;
     let degraded = false;
 
     try {
       for (let i = 0; i < maxToolIterations && reply === null; i++) {
-        const result = await this.router.runTurn({ conversationId, system: SYSTEM_PROMPT, transcript, tools: this.tools.specs });
+        const result = await this.router.runTurn({
+          conversationId,
+          system: SYSTEM_PROMPT,
+          transcript,
+          tools: this.tools.specs,
+          onTextDelta: events.delta,
+          onReset: events.reset,
+        });
+        if (result.text.trim()) texts.push(result.text.trim());
         const assistant: TranscriptItem = {
           kind: 'assistant',
           text: result.text,
@@ -125,15 +173,17 @@ export class ConversationService {
         transcript.push(assistant);
 
         if (result.stopReason === 'refusal') {
-          reply = result.text || REPLIES.refusal;
+          reply = result.text ? replyWith() : replyWith(REPLIES.refusal);
         } else if (result.toolCalls.length === 0) {
-          reply = result.text || REPLIES.empty;
+          reply = texts.length ? replyWith() : REPLIES.empty;
         } else {
+          events.step?.();
           const truncated = result.stopReason === 'max_tokens';
           const results: ToolResult[] = result.toolCalls.map((call) => {
             if (truncated) {
               return { callId: call.id, name: call.name, isError: true, output: JSON.stringify({ error: 'truncated', message: 'Your output was cut off; send a shorter tool call.' }) };
             }
+            events.tool?.(call.name, TOOL_LABELS[call.name] ?? 'Working on it');
             const outcome = this.runTool(call.name, call.input, session);
             return { callId: call.id, name: call.name, ...outcome };
           });
@@ -143,17 +193,17 @@ export class ConversationService {
         }
       }
       if (reply === null) {
-        reply = REPLIES.tooLong;
+        reply = replyWith(REPLIES.tooLong);
         this.handOff(session, `Conversation hit the ${maxToolIterations}-step limit without finishing; please follow up.`);
       }
     } catch (err) {
       if (!(err instanceof LlmUnavailableError)) throw err;
       this.logger.error(err.message);
-      reply = REPLIES.unavailable;
+      reply = replyWith(REPLIES.unavailable);
       degraded = true;
       this.handOff(session, `Assistant was unavailable mid-conversation (${err.attempts.map((a) => a.provider).join(', ')} failed). Last message: "${message.slice(0, 200)}"`);
       // Keep the transcript well-formed for the next turn.
-      const fallback: TranscriptItem = { kind: 'assistant', text: reply, toolCalls: [] };
+      const fallback: TranscriptItem = { kind: 'assistant', text: REPLIES.unavailable, toolCalls: [] };
       this.append(conversationId, fallback);
     }
 
