@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { CLOCK, type Clock } from '../common/clock.js';
+import { NotFoundError } from '../common/errors.js';
 import { toUtcIso } from '../common/time.js';
 import { DB, type Db } from '../database/database.js';
 import { PRACTICE } from '../practice/practice.js';
@@ -90,11 +91,14 @@ export class NotificationsService {
   }
 
   acknowledge(id: string): StaffNotification {
-    this.db.prepare("UPDATE staff_notifications SET status = 'acknowledged' WHERE id = ?").run(id);
+    const { changes } = this.db.prepare("UPDATE staff_notifications SET status = 'acknowledged' WHERE id = ?").run(id);
+    if (changes === 0) throw new NotFoundError('Notification', id);
     return this.get(id);
   }
 
   private get(id: string): StaffNotification {
-    return toNotification(this.db.prepare('SELECT * FROM staff_notifications WHERE id = ?').get(id) as NotificationRow);
+    const row = this.db.prepare('SELECT * FROM staff_notifications WHERE id = ?').get(id) as NotificationRow | undefined;
+    if (!row) throw new NotFoundError('Notification', id);
+    return toNotification(row);
   }
 }
