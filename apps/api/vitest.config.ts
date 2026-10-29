@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     globals: true,
     root: './',
+    env: { DB_PATH: ':memory:' },
     include: ['**/*.spec.ts'],
   },
 });
