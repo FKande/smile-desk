@@ -133,7 +133,8 @@
   --slot-bg-selected: var(--brand-solid);
   --slot-fg-selected: var(--fg-on-brand);
   --slot-bg-unavailable: var(--bg-subtle);
-  --slot-fg-unavailable: var(--fg-disabled);
+  /* Muted, not disabled: "Taken" is information the patient reads, so it keeps AA contrast. */
+  --slot-fg-unavailable: var(--fg-muted);
 
   /* ---------- Loaders ---------- */
   --skeleton-base: var(--bg-muted);

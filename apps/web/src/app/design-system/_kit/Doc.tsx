@@ -10,7 +10,7 @@ export function PageHeader({ title, children }: { title: string; children?: Reac
     <header className="flex flex-col gap-3">
       <p className="text-label font-semibold text-brand-text">Smile Desk design system</p>
       <h1 className="text-display font-bold">{title}</h1>
-      {children ? <div className="max-w-3xl text-body text-secondary">{children}</div> : null}
+      {children ? <div className="max-w-[70ch] text-body text-secondary">{children}</div> : null}
     </header>
   );
 }
@@ -32,7 +32,7 @@ export function Section({
         <h2 id={`${id}-title`} className="text-heading font-bold">
           {title}
         </h2>
-        {description ? <div className="max-w-3xl text-body-sm text-secondary">{description}</div> : null}
+        {description ? <div className="max-w-[70ch] text-body-sm text-secondary">{description}</div> : null}
       </div>
       {children}
     </section>
@@ -82,7 +82,7 @@ export function Stage({
         <figcaption className="flex flex-col gap-1.5">
           {title ? <span className="text-title font-semibold">{title}</span> : null}
           {source ? <SourcePath path={source} /> : null}
-          {description ? <span className="max-w-3xl text-body-sm text-secondary">{description}</span> : null}
+          {description ? <span className="max-w-[70ch] text-body-sm text-secondary">{description}</span> : null}
         </figcaption>
       ) : null}
       <div className={cn("grid gap-3", schemes === "both" && !stacked && "xl:grid-cols-2")}>

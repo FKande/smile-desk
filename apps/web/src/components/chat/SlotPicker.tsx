@@ -215,7 +215,7 @@ function SlotOption({
       />
       <span className={cn("flex min-w-0 flex-col", block ? "items-start" : "items-center")} aria-hidden="true">
         <span className={cn("text-label font-semibold tabular-nums", !available && "line-through")}>{time}</span>
-        {block && slot.detail ? <span className="text-caption opacity-90">{slot.detail}</span> : null}
+        {block && slot.detail ? <span className="text-caption">{slot.detail}</span> : null}
         {!available ? <span className="text-caption">Taken</span> : null}
       </span>
       {checked ? <Icon name="check" size="sm" className={block ? undefined : "absolute right-2 top-2"} /> : null}

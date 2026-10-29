@@ -114,7 +114,6 @@ export function MessageBubble({
               bubbleColors[sender],
               corners.bottom,
               !startsRun && corners.top,
-              status === "sending" && "opacity-70",
             )}
           >
             <span className="sr-only">{name}: </span>
