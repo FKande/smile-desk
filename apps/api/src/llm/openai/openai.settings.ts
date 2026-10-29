@@ -36,8 +36,9 @@ export const openAiSettingsSchema = z
     promptCachePrewarm: z.boolean().default(false),
     /** Send a hashed per-conversation id as safety_identifier. */
     sendSafetyIdentifier: z.boolean().default(true),
-    /** Built-in moderation on input: off, score (annotate) or block. */
+    /** Built-in moderation of input and output: off, score (annotate) or block. */
     moderation: z.enum(['off', 'score', 'block']).default('off'),
+    moderationModel: z.string().min(1).default('omni-moderation-latest'),
     /** Only honoured with reasoningEffort "none" on models that support it. */
     temperature: z.number().min(0).max(2).nullable().default(null),
     topP: z.number().min(0).max(1).nullable().default(null),
