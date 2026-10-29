@@ -7,6 +7,7 @@ Meet **Maya**, the AI front desk for a dental practice. New patients register, e
 ## Try it
 
 **Live:** https://smile-desk-ashy.vercel.app (patient chat) · https://smile-desk-ashy.vercel.app/staff (alert queue + Feedback view, open, no sign-in)
+
 ```bash
 git clone https://github.com/FKande/smile-desk.git && cd smile-desk
 cp .env.example .env    # set ANTHROPIC_API_KEY (OPENAI_API_KEY optional, for failover)
@@ -52,6 +53,7 @@ flowchart LR
   router -.-> openai["OpenAI<br/>fallback"]
   tools --> db
 ```
+
 ```mermaid
 sequenceDiagram
   participant B as Browser
@@ -66,6 +68,7 @@ sequenceDiagram
   T-->>A: open slots, then the model replies
   A-->>B: delta, tool and done events
 ```
+
 - **Agent loop** (`conversation/conversation.service.ts`): a small hand-written loop. Each patient turn gets a system-written `<context>` block (practice time, who is verified); the model calls tools until it answers, capped at 8 calls per message (`LLM_MAX_TOOL_ITERATIONS`), then hands off to staff. The transcript is append-only and a per-conversation lock serializes turns.
 - **Server-held identity:** `verify_patient` (name + date of birth, phone on a tie) or `register_patient` sets the actor on the server. Every write checks `canActFor`: parents for children, spouses for each other, everyone else gets `forbidden`. A mismatch looks exactly like "not found".
 - **Tools** (`conversation/tools.ts`): `get_practice_info`, `verify_patient`, `register_patient`, `add_family_member`, `get_my_appointments`, `find_open_slots`, `find_back_to_back_slots`, `book_appointments`, `reschedule_appointment`, `cancel_appointment`, `notify_staff`. Bad input returns a recoverable error, never a throw.
@@ -140,6 +143,7 @@ npm test && npm run lint && npm run typecheck && npm run build   # Vitest (API) 
 npm run test:e2e -w @smile-desk/api       # HTTP end to end: SSE frames, 400/404, admin auth
 npm run eval -w @smile-desk/api           # real-model evals against a running API (costs credits)
 ```
+
 - **CI** (`.github/workflows/ci.yml`) runs lint, typecheck, unit + e2e tests and the build on every PR and push to `main`.
 - **Scripted-model tests** drive the agent loop deterministically: verification, emergencies, family booking, failover, outages, runaway loops, stream order.
 - **Real-model evals** (`apps/api/evals/`): ten patient scenarios checking end states, not wording; setup in [`apps/api/evals/README.md`](apps/api/evals/README.md).
@@ -156,6 +160,7 @@ npm run eval -w @smile-desk/api           # real-model evals against a running A
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Where the web app finds the API (build time) |
 
 Everything else is in [`.env.example`](.env.example). Tune live, without a restart, via `GET` / `PUT` / `DELETE /admin/llm` (header `x-admin-token`):
+
 ```bash
 curl -X PUT http://localhost:4000/admin/llm -H "x-admin-token: change-me" -H "content-type: application/json" -d '{"harness":{"activeProvider":"openai"}}'
 ```
