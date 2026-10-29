@@ -90,7 +90,10 @@ export function AppointmentCard({
       )}
       {...rest}
     >
-      <header className="flex items-start gap-3">
+      {/* Wraps: inside a chat bubble on a phone the card is ~17rem wide, too
+          narrow for icon + title + badge, so the badge drops below instead of
+          covering the title. */}
+      <header className="flex flex-wrap items-start gap-3">
         <span
           data-tone={kind.tone}
           aria-hidden="true"
@@ -101,7 +104,7 @@ export function AppointmentCard({
         >
           <Icon name={kind.icon} size="md" />
         </span>
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-36 flex-1 flex-col">
           <h3 className={cn("text-title font-semibold", cancelled && "text-muted")}>{kind.label}</h3>
           {family ? (
             <p className="text-body-sm text-secondary">{members.length} back-to-back visits</p>
