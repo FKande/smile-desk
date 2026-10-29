@@ -8,6 +8,6 @@ export async function POST(request: Request) {
 
   const script = scriptTurn(turn.conversationId, turn.conversation, turn.message);
   if ("status" in script) return Response.json(script.body, { status: script.status });
-  recordTurn(turn.conversation, turn.message, script.reply.reply);
+  recordTurn(turn.conversation, turn.message, script.reply);
   return Response.json(script.reply);
 }
