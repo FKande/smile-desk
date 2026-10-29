@@ -38,18 +38,24 @@ export function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={legend}
-      className={cn("inline-flex items-center gap-0.5 rounded-full border border-subtle bg-subtle p-0.5", className)}
+      // Never wraps (a wrapped segmented control reads as two controls). On a
+      // container too narrow for every option it scrolls sideways instead, so
+      // the focus ring sits inside each pill where the scroll edge can't clip it.
+      className={cn(
+        "inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-subtle bg-subtle p-0.5 [scrollbar-width:none]",
+        className,
+      )}
     >
       {options.map((option) => (
         <label
           key={option.value}
           title={option.iconOnly ? option.label : undefined}
           className={cn(
-            "inline-flex h-8 cursor-pointer select-none items-center justify-center gap-1.5 rounded-full text-label font-semibold leading-none text-secondary",
+            "inline-flex h-8 shrink-0 cursor-pointer select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-label font-semibold leading-none text-secondary",
             "transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-out",
             "hover:text-default",
             "has-checked:bg-surface has-checked:text-default has-checked:shadow-raised",
-            "has-focus-visible:focus-ring",
+            "has-focus-visible:focus-ring-inset",
             option.iconOnly ? "w-8" : "min-w-10 px-3",
           )}
         >
@@ -61,7 +67,11 @@ export function SegmentedControl<T extends string>({
             onChange={() => onChange(option.value)}
             className="sr-only"
           />
-          {option.icon ? <Icon name={option.icon} size="sm" /> : null}
+          {/* On phones a labeled segment drops its icon (the word carries the
+              meaning), so three or four options still fit without scrolling. */}
+          {option.icon ? (
+            <Icon name={option.icon} size="sm" className={option.iconOnly ? undefined : "max-sm:hidden"} />
+          ) : null}
           <span className={option.iconOnly ? "sr-only" : undefined}>{option.label}</span>
         </label>
       ))}

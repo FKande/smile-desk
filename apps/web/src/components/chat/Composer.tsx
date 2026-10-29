@@ -131,7 +131,7 @@ export function Composer({
           onKeyDown={handleKeyDown}
           style={{ maxHeight: `calc(${maxRows}lh + 1.25rem)` }}
           className={cn(
-            "min-h-(--control-h-md) flex-1 resize-none bg-transparent py-2.5 text-body text-(color:--input-fg)",
+            "min-h-(--control-h-md) w-0 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-body text-(color:--input-fg)",
             "placeholder:text-(color:--input-placeholder) outline-none focus-visible:outline-none",
             "disabled:cursor-not-allowed",
           )}

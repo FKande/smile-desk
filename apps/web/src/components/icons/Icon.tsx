@@ -140,6 +140,12 @@ const paths = {
       <path d="m4.93 4.93.71.71" />
     </>
   ),
+  smartphone: (
+    <>
+      <rect width="14" height="20" x="5" y="2" rx="2" />
+      <path d="M12 18h.01" />
+    </>
+  ),
   sun: (
     <>
       <circle cx="12" cy="12" r="4" />
