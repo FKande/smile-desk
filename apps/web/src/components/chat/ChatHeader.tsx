@@ -27,7 +27,7 @@ export type ChatHeaderProps = Omit<HTMLAttributes<HTMLElement>, "children"> & {
  */
 export function ChatHeader({
   assistantName = "Smile Desk",
-  practiceName = "Bright Smile Dental",
+  practiceName = "Smile Desk Dental",
   status = "Usually replies right away",
   hours,
   available = true,
