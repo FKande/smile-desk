@@ -2,7 +2,7 @@
 //
 // Keeps the three-tier token system honest by scanning apps/web/src:
 //   (a) no --p-* primitive outside src/styles (the design-system catalog may show them)
-//   (b) no raw colour literals in .ts/.tsx (layout.tsx's viewport themeColor excepted)
+//   (b) no raw colour literals in .ts/.tsx (layout.tsx themeColor and the apple-icon image excepted)
 //   (c) no Tailwind default-palette classes and no dark: variant in .tsx
 //   (d) tier-3 component tokens never point at a primitive (one sanctioned exception)
 // Each violation is reported as path:line so it can be fixed directly.
@@ -31,8 +31,9 @@ const files = walk(SRC).map((path) => ({ path, lines: readFileSync(join(WEB, pat
 
 const STYLES = "src/styles/";
 const CATALOG = "src/app/design-system/";
-/** Viewport themeColor has to be a literal colour: CSS variables don't reach <meta>. */
-const COLOR_LITERAL_ALLOWLIST = new Set(["src/app/layout.tsx"]);
+/** Literal colours where CSS variables can't reach: the viewport themeColor <meta>,
+ *  and the apple-icon PNG rendered by next/og. */
+const COLOR_LITERAL_ALLOWLIST = new Set(["src/app/layout.tsx", "src/app/apple-icon.tsx"]);
 /** Tier-3 tokens allowed to reference a primitive directly, with the reason. */
 const COMPONENT_PRIMITIVE_ALLOWLIST = new Map([["--switch-thumb", "the thumb is white in both schemes"]]);
 
