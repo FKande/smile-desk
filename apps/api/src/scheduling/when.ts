@@ -1,11 +1,41 @@
 import { DateTime } from 'luxon';
+import { ValidationError } from '../common/errors.js';
 import type { PartOfDay } from '../common/time.js';
 import { PRACTICE } from '../practice/practice.js';
 
-// Turns what patients actually say ("later next week", "early next month",
-// "next Tuesday afternoon") into a concrete search window. This is deliberately
-// deterministic code, not the model: date arithmetic is where LLMs slip, and a
-// wrong window means offering the wrong days with total confidence.
+// Language and arithmetic are split on purpose. The model reads the patient's
+// words ("uh, sometime later next week, after work?") and fills in this small,
+// closed vocabulary; this module does the calendar math. The model is good at
+// the first job and unreliable at the second, so it never computes a date.
+
+export const PERIODS = ['asap', 'today', 'tomorrow', 'this_week', 'next_week', 'week_after_next', 'this_month', 'next_month'] as const;
+export const PORTIONS = ['early', 'mid', 'late'] as const;
+export const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+export const PARTS_OF_DAY = ['morning', 'afternoon', 'evening'] as const;
+
+export type Period = (typeof PERIODS)[number];
+export type Portion = (typeof PORTIONS)[number];
+export type Weekday = (typeof WEEKDAYS)[number];
+
+export interface WhenSpec {
+  /** Relative period the patient named. */
+  period?: Period;
+  /** Narrows a week (Mon–Tue / Tue–Thu / Thu–Sat) or a month (1–10 / 11–20 / 21–end). */
+  portion?: Portion;
+  /** A specific day. With this_week/next_week it picks that week; alone it means the next one. */
+  weekday?: Weekday;
+  /** A named month (1–12), e.g. "early January". Combines with portion. */
+  month?: number;
+  /** "in 3 days" → that day; "in 2 weeks" → that whole week. */
+  inDays?: number;
+  inWeeks?: number;
+  /** An exact date the patient gave, YYYY-MM-DD. */
+  date?: string;
+  /** An explicit range, YYYY-MM-DD. `to` is inclusive and defaults to two weeks after `from`. */
+  from?: string;
+  to?: string;
+  partOfDay?: PartOfDay;
+}
 
 export interface ResolvedWindow {
   from: DateTime;
@@ -16,155 +46,117 @@ export interface ResolvedWindow {
   description: string;
 }
 
-const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-const MONTHS = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december',
-];
-const NUMBER_WORDS: Record<string, number> = {
-  a: 1, an: 1, one: 1, two: 2, couple: 2, 'a couple': 2, 'a couple of': 2, 'couple of': 2,
-  three: 3, few: 3, 'a few': 3, four: 4, five: 5, six: 6,
-};
+const DAY = 'ccc, LLL d';
 
-const PART_OF_DAY: [RegExp, PartOfDay][] = [
-  [/\b(?:early |late )?(?:mornings?|am|before work|before lunch)\b/, 'morning'],
-  [/\b(?:late afternoons?|evenings?|after work|after school|after 4(?: ?pm)?|end of (?:the )?day)\b/, 'evening'],
-  [/\b(?:afternoons?|pm|after lunch|midday)\b/, 'afternoon'],
-];
-
-const FILLER = /\b(?:sometime|some time|maybe|preferably|ideally|probably|around|like|ish|please|if possible|works?|would be (?:best|great|good)|is (?:best|good|better))\b/g;
-
-const DAY_LABEL = 'ccc, LLL d';
-
-export function resolveWhen(input: string, now: DateTime): ResolvedWindow | null {
+export function resolveWhen(spec: WhenSpec, now: DateTime): ResolvedWindow {
   const local = now.setZone(PRACTICE.timezone);
   const today = local.startOf('day');
-  const thisWeek = today.startOf('week'); // ISO weeks start on Monday
-  const nextWeek = thisWeek.plus({ weeks: 1 });
-
-  let text = ` ${input.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')} `.replace(/\s+/g, ' ');
-  let partOfDay: PartOfDay | undefined;
-  for (const [pattern, part] of PART_OF_DAY) {
-    if (pattern.test(text)) {
-      partOfDay ??= part;
-      text = text.replace(pattern, ' ');
-    }
+  const thisWeek = today.startOf('week'); // ISO weeks start Monday
+  const anchors = [spec.date, spec.from, spec.period, spec.month, spec.inDays, spec.inWeeks].filter((v) => v !== undefined);
+  if (anchors.length > 1) {
+    throw new ValidationError('Use one of date, from/to, period, month, inDays or inWeeks, not several');
   }
-  text = text
-    .replace(FILLER, ' ')
-    .replace(/\b(?:in the|on|at|for|during)\b/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 
-  const window = (from: DateTime, to: DateTime, description: string): ResolvedWindow | null => {
+  const result = (from: DateTime, to: DateTime, description: string): ResolvedWindow => {
     const start = from < local ? local : from;
-    if (to <= start) return null; // e.g. "early this week" said on a Friday
-    return { from: start, to, partOfDay, description };
+    if (to <= start) {
+      throw new ValidationError(`"${description}" is already over; ask the patient for another time`);
+    }
+    const shown = `${start.toFormat(DAY)}${to.minus({ days: 1 }).hasSame(start, 'day') ? '' : ` – ${to.minus({ days: 1 }).toFormat(DAY)}`}`;
+    const part = spec.partOfDay ? `, ${spec.partOfDay}s` : '';
+    return { from: start, to, partOfDay: spec.partOfDay, description: `${description} (${shown}${part})` };
   };
-  const day = (d: DateTime, prefix = '') => window(d, d.plus({ days: 1 }), `${prefix}${d.toFormat(DAY_LABEL)}`);
+  const oneDay = (d: DateTime, label: string) => result(d, d.plus({ days: 1 }), label);
 
-  if (!text || /^(?:any ?time|whenever|asap|as soon as possible|soonest|earliest|first available|next available|soon|any day)$/.test(text)) {
-    return window(local, today.plus({ days: 14 }), 'the next two weeks');
-  }
-  if (/^today$/.test(text)) return day(today, 'today, ');
-  if (/^(?:tomorrow|tmrw|tmr)$/.test(text)) return day(today.plus({ days: 1 }), 'tomorrow, ');
-  if (/^(?:the )?day after tomorrow$/.test(text)) return day(today.plus({ days: 2 }));
-
-  if (/^(?:iso )?\d{4} \d{2} \d{2}$/.test(text)) {
-    const date = DateTime.fromISO(text.replace(/ /g, '-').replace(/^iso-/, ''), { zone: PRACTICE.timezone });
-    return date.isValid ? day(date) : null;
+  if (spec.date) {
+    const d = parseDate(spec.date, 'date');
+    return oneDay(d, d.toFormat('cccc, LLLL d'));
   }
 
-  // Weekends: the practice is open Saturdays only.
-  let m = text.match(/^(this|next)? ?weekend$/);
-  if (m) {
-    let saturday = (m[1] === 'next' ? nextWeek : thisWeek).plus({ days: 5 });
-    if (m[1] !== 'next' && today.weekday === 7) saturday = saturday.plus({ weeks: 1 });
-    return day(saturday, 'Saturday (we are closed Sundays), ');
+  if (spec.from) {
+    const from = parseDate(spec.from, 'from');
+    const to = spec.to ? parseDate(spec.to, 'to').plus({ days: 1 }) : from.plus({ days: 14 });
+    return result(from, to, `from ${from.toFormat('LLL d')}`);
   }
 
-  m = text.match(/^(?:the )?rest of (?:the |this )?week$/);
-  if (m) return window(local, thisWeek.plus({ days: 7 }), 'the rest of this week');
-
-  m = text.match(/^(?:the )?week after next$/);
-  if (m) return weekPart(thisWeek.plus({ weeks: 2 }), undefined, 'the week after next');
-
-  m = text.match(/^(?:(early|beginning of|start of|mid|middle of|late|later|end of)\s+)?(?:the\s+)?(this|next)?\s*week$/);
-  if (m) {
-    const base = m[2] === 'next' ? nextWeek : thisWeek;
-    return weekPart(base, m[1], `${m[1] ? `${m[1]} ` : ''}${m[2] === 'next' ? 'next' : 'this'} week`);
-  }
-
-  m = text.match(/^(?:(early|beginning of|start of|mid|middle of|late|later|end of)\s+)?(?:the\s+)?(this|next)?\s*month$/);
-  if (m) {
-    const base = (m[2] === 'next' ? today.plus({ months: 1 }) : today).startOf('month');
-    return monthPart(base, m[1], `${m[1] ? `${m[1]} ` : ''}${m[2] === 'next' ? 'next' : 'this'} month`);
-  }
-
-  m = text.match(new RegExp(`^(?:(early|beginning of|start of|mid|middle of|late|later|end of)\\s+)?(${MONTHS.join('|')})$`));
-  if (m) {
-    let base = today.set({ month: MONTHS.indexOf(m[2]) + 1 }).startOf('month');
-    if (base.endOf('month') < local) base = base.plus({ years: 1 });
-    return monthPart(base, m[1], `${m[1] ? `${m[1]} ` : ''}${base.toFormat('LLLL')}`);
-  }
-
-  m = text.match(new RegExp(`^(this|next|coming|this coming)? ?(${WEEKDAYS.join('|')})s?$`));
-  if (m) {
-    const index = WEEKDAYS.indexOf(m[2]) + 1;
-    // "Tuesday" = the next Tuesday from today; "next Tuesday" = Tuesday of next week.
-    let target = m[1] === 'next' ? nextWeek.plus({ days: index - 1 }) : thisWeek.plus({ days: index - 1 });
-    if (m[1] !== 'next' && target < today) target = target.plus({ weeks: 1 });
-    if (m[1] !== 'next' && target.hasSame(today, 'day') && local.hour >= PRACTICE.closeHour - 1) {
-      target = target.plus({ weeks: 1 });
+  if (spec.month !== undefined) {
+    if (!Number.isInteger(spec.month) || spec.month < 1 || spec.month > 12) {
+      throw new ValidationError('month must be 1–12');
     }
-    return day(target, index === 7 ? 'Sunday (we are closed Sundays), ' : '');
+    let start = today.set({ month: spec.month }).startOf('month');
+    if (start.endOf('month') < local) start = start.plus({ years: 1 });
+    return monthPortion(start, `${portionLabel(spec.portion)}${start.toFormat('LLLL')}`);
   }
 
-  m = text.match(/^in (\d+|an?|one|two|three|four|five|six|a couple(?: of)?|couple(?: of)?|a few|few) (days?|weeks?|months?)$/);
-  if (m) {
-    const n = Number(m[1]) || NUMBER_WORDS[m[1]];
-    if (m[2].startsWith('day')) return day(today.plus({ days: n }));
-    if (m[2].startsWith('week')) {
-      const weekStart = today.plus({ weeks: n }).startOf('week');
-      return weekPart(weekStart, undefined, `the week of ${weekStart.toFormat('LLL d')}`);
+  if (spec.inDays !== undefined) {
+    const d = today.plus({ days: positive(spec.inDays, 'inDays') });
+    return oneDay(d, `in ${spec.inDays} day${spec.inDays === 1 ? '' : 's'}`);
+  }
+
+  if (spec.inWeeks !== undefined) {
+    const weekStart = today.plus({ weeks: positive(spec.inWeeks, 'inWeeks') }).startOf('week');
+    return weekPortion(weekStart, `the week of ${weekStart.toFormat('LLL d')}`);
+  }
+
+  switch (spec.period) {
+    case undefined:
+    case 'asap':
+      if (spec.weekday) return weekday(spec.weekday);
+      return result(local, today.plus({ days: 14 }), 'the next two weeks');
+    case 'today':
+      return oneDay(today, 'today');
+    case 'tomorrow':
+      return oneDay(today.plus({ days: 1 }), 'tomorrow');
+    case 'this_week':
+    case 'next_week':
+    case 'week_after_next': {
+      const weekStart = thisWeek.plus({ weeks: { this_week: 0, next_week: 1, week_after_next: 2 }[spec.period] });
+      const label = spec.period.replace(/_/g, ' ');
+      if (spec.weekday) return oneDay(weekStart.plus({ days: WEEKDAYS.indexOf(spec.weekday) }), `${capitalize(spec.weekday)} ${label}`);
+      return weekPortion(weekStart, `${portionLabel(spec.portion)}${label}`);
     }
-    const monthStart = today.plus({ months: n }).startOf('month');
-    return monthPart(monthStart, undefined, monthStart.toFormat('LLLL'));
+    case 'this_month':
+    case 'next_month': {
+      const start = (spec.period === 'next_month' ? today.plus({ months: 1 }) : today).startOf('month');
+      return monthPortion(start, `${portionLabel(spec.portion)}${spec.period.replace('_', ' ')}`);
+    }
+    default:
+      throw new ValidationError(`Unknown period "${String(spec.period)}"`);
   }
 
-  m = text.match(/^(?:the )?next (\d+|two|three|four|a couple(?: of)?|couple(?: of)?|a few|few) (days|weeks)$/);
-  if (m) {
-    const n = Number(m[1]) || NUMBER_WORDS[m[1]];
-    const unit = m[2] === 'days' ? { days: n } : { weeks: n };
-    return window(local, today.plus(unit).plus({ days: 1 }), `the next ${n} ${m[2]}`);
+  function weekday(day: Weekday): ResolvedWindow {
+    let d = thisWeek.plus({ days: WEEKDAYS.indexOf(day) });
+    // The coming one: today counts only while there is still time to book.
+    if (d < today || (d.hasSame(today, 'day') && local.hour >= PRACTICE.closeHour - 1)) d = d.plus({ weeks: 1 });
+    return oneDay(d, capitalize(day));
   }
 
-  m = text.match(/^(?:after|from|starting) (?:the )?(\d{1,2})(?:st|nd|rd|th)?$/);
-  if (m) {
-    let start = today.set({ day: Number(m[1]) });
-    if (!start.isValid || Number(m[1]) > today.daysInMonth!) return null;
-    if (start < today) start = start.plus({ months: 1 });
-    return window(start, start.plus({ days: 14 }), `the two weeks from ${start.toFormat('LLL d')}`);
+  function weekPortion(weekStart: DateTime, label: string): ResolvedWindow {
+    const [fromDay, toDay] = { early: [0, 2], mid: [1, 4], late: [3, 6] }[spec.portion ?? 'early'];
+    return spec.portion
+      ? result(weekStart.plus({ days: fromDay }), weekStart.plus({ days: toDay }), label)
+      : result(weekStart, weekStart.plus({ days: 7 }), label);
   }
 
-  return null;
-
-  function weekPart(weekStart: DateTime, part: string | undefined, description: string) {
-    const [fromDay, toDay] = !part
-      ? [0, 7]
-      : /early|beginning|start/.test(part) ? [0, 2] // Mon–Tue
-      : /mid/.test(part) ? [1, 4] // Tue–Thu
-      : [3, 6]; // later / end: Thu–Sat
-    return window(weekStart.plus({ days: fromDay }), weekStart.plus({ days: toDay }), description);
-  }
-
-  function monthPart(monthStart: DateTime, part: string | undefined, description: string) {
-    const nextMonth = monthStart.plus({ months: 1 });
-    const [from, to] = !part
-      ? [monthStart, nextMonth]
-      : /early|beginning|start/.test(part) ? [monthStart, monthStart.set({ day: 11 })]
-      : /mid/.test(part) ? [monthStart.set({ day: 11 }), monthStart.set({ day: 21 })]
-      : [monthStart.set({ day: 21 }), nextMonth];
-    return window(from, to, description);
+  function monthPortion(monthStart: DateTime, label: string): ResolvedWindow {
+    const next = monthStart.plus({ months: 1 });
+    if (!spec.portion) return result(monthStart, next, label);
+    const ranges = { early: [monthStart, monthStart.set({ day: 11 })], mid: [monthStart.set({ day: 11 }), monthStart.set({ day: 21 })], late: [monthStart.set({ day: 21 }), next] };
+    const [from, to] = ranges[spec.portion];
+    return result(from, to, label);
   }
 }
+
+function parseDate(value: string, field: string): DateTime {
+  const d = DateTime.fromISO(value, { zone: PRACTICE.timezone });
+  if (!d.isValid) throw new ValidationError(`${field} must be YYYY-MM-DD, got "${value}"`);
+  return d.startOf('day');
+}
+
+function positive(n: number, field: string): number {
+  if (!Number.isInteger(n) || n < 0 || n > 26) throw new ValidationError(`${field} must be a whole number from 0 to 26`);
+  return n;
+}
+
+const portionLabel = (p?: Portion) => (p === 'late' ? 'later ' : p ? `${p} ` : '');
+const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);

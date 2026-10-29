@@ -1,68 +1,71 @@
 import { DateTime } from 'luxon';
+import { ValidationError } from '../common/errors.js';
 import { PRACTICE } from '../practice/practice.js';
-import { resolveWhen } from './when.js';
+import { resolveWhen, type WhenSpec } from './when.js';
 
 // Monday Nov 2, 2026, 9:00 AM practice time.
 const MONDAY = DateTime.fromISO('2026-11-02T09:00', { zone: PRACTICE.timezone });
 const THURSDAY = MONDAY.plus({ days: 3 });
 
-const range = (phrase: string, now = MONDAY) => {
-  const w = resolveWhen(phrase, now);
-  if (!w) return null;
-  return { from: w.from.toISODate(), to: w.to.minus({ milliseconds: 1 }).toISODate(), partOfDay: w.partOfDay };
+const range = (spec: WhenSpec, now = MONDAY) => {
+  const w = resolveWhen(spec, now);
+  return { from: w.from.toISODate(), to: w.to.minus({ milliseconds: 1 }).toISODate() };
 };
 
 describe('resolveWhen', () => {
-  it.each([
-    ['today', '2026-11-02', '2026-11-02'],
-    ['tomorrow', '2026-11-03', '2026-11-03'],
-    ['this week', '2026-11-02', '2026-11-08'],
-    ['next week', '2026-11-09', '2026-11-15'],
-    ['early next week', '2026-11-09', '2026-11-10'],
-    ['middle of next week', '2026-11-10', '2026-11-12'],
-    ['later next week', '2026-11-12', '2026-11-14'],
-    ['end of next week', '2026-11-12', '2026-11-14'],
-    ['the week after next', '2026-11-16', '2026-11-22'],
-    ['next month', '2026-12-01', '2026-12-31'],
-    ['early next month', '2026-12-01', '2026-12-10'],
-    ['mid next month', '2026-12-11', '2026-12-20'],
-    ['late next month', '2026-12-21', '2026-12-31'],
-    ['later this month', '2026-11-21', '2026-11-30'],
-    ['early January', '2027-01-01', '2027-01-10'],
-    ['in 2 weeks', '2026-11-16', '2026-11-22'],
-    ['in a couple of days', '2026-11-04', '2026-11-04'],
-    ['Thursday', '2026-11-05', '2026-11-05'],
-    ['this Monday', '2026-11-02', '2026-11-02'],
-    ['next Tuesday', '2026-11-10', '2026-11-10'],
-    ['this weekend', '2026-11-07', '2026-11-07'],
-    ['after the 20th', '2026-11-20', '2026-12-03'],
-    ['2026-11-18', '2026-11-18', '2026-11-18'],
-    ['asap', '2026-11-02', '2026-11-15'],
-  ])('"%s" → %s to %s', (phrase, from, to) => {
-    expect(range(phrase)).toMatchObject({ from, to });
+  // Each row: what the patient said, what the model fills in, the dates we search.
+  it.each<[string, WhenSpec, string, string]>([
+    ['today', { period: 'today' }, '2026-11-02', '2026-11-02'],
+    ['tomorrow', { period: 'tomorrow' }, '2026-11-03', '2026-11-03'],
+    ['this week', { period: 'this_week' }, '2026-11-02', '2026-11-08'],
+    ['next week', { period: 'next_week' }, '2026-11-09', '2026-11-15'],
+    ['early next week', { period: 'next_week', portion: 'early' }, '2026-11-09', '2026-11-10'],
+    ['middle of next week', { period: 'next_week', portion: 'mid' }, '2026-11-10', '2026-11-12'],
+    ['later next week', { period: 'next_week', portion: 'late' }, '2026-11-12', '2026-11-14'],
+    ['the week after next', { period: 'week_after_next' }, '2026-11-16', '2026-11-22'],
+    ['next month', { period: 'next_month' }, '2026-12-01', '2026-12-31'],
+    ['early next month', { period: 'next_month', portion: 'early' }, '2026-12-01', '2026-12-10'],
+    ['mid next month', { period: 'next_month', portion: 'mid' }, '2026-12-11', '2026-12-20'],
+    ['end of next month', { period: 'next_month', portion: 'late' }, '2026-12-21', '2026-12-31'],
+    ['later this month', { period: 'this_month', portion: 'late' }, '2026-11-21', '2026-11-30'],
+    ['early January', { month: 1, portion: 'early' }, '2027-01-01', '2027-01-10'],
+    ['in two weeks', { inWeeks: 2 }, '2026-11-16', '2026-11-22'],
+    ['in a couple of days', { inDays: 2 }, '2026-11-04', '2026-11-04'],
+    ['Thursday', { weekday: 'thursday' }, '2026-11-05', '2026-11-05'],
+    ['next Tuesday', { period: 'next_week', weekday: 'tuesday' }, '2026-11-10', '2026-11-10'],
+    ['this Saturday', { period: 'this_week', weekday: 'saturday' }, '2026-11-07', '2026-11-07'],
+    ['the 18th', { date: '2026-11-18' }, '2026-11-18', '2026-11-18'],
+    ['anytime after the 20th', { from: '2026-11-20' }, '2026-11-20', '2026-12-03'],
+    ['between the 10th and 12th', { from: '2026-11-10', to: '2026-11-12' }, '2026-11-10', '2026-11-12'],
+    ['as soon as possible', { period: 'asap' }, '2026-11-02', '2026-11-15'],
+    ['(no timing given)', {}, '2026-11-02', '2026-11-15'],
+  ])('"%s" → %o → %s to %s', (_said, spec, from, to) => {
+    expect(range(spec)).toEqual({ from, to });
   });
 
-  it('pulls out the part of day and keeps the date meaning', () => {
-    expect(range('next Tuesday afternoon')).toEqual({ from: '2026-11-10', to: '2026-11-10', partOfDay: 'afternoon' });
-    expect(range('later next week, mornings preferably')).toMatchObject({ from: '2026-11-12', partOfDay: 'morning' });
-    expect(range('sometime after work next week')).toMatchObject({ from: '2026-11-09', partOfDay: 'evening' });
-    expect(range('mornings')).toMatchObject({ from: '2026-11-02', to: '2026-11-15', partOfDay: 'morning' });
+  it('passes the part of day through and says it back', () => {
+    const w = resolveWhen({ period: 'next_week', portion: 'late', partOfDay: 'evening' }, MONDAY);
+    expect(w.partOfDay).toBe('evening');
+    expect(w.description).toBe('later next week (Thu, Nov 12 – Sat, Nov 14, evenings)');
   });
 
   it('never starts a window in the past', () => {
-    const w = resolveWhen('this week', MONDAY)!;
-    expect(w.from.toMillis()).toBe(MONDAY.toMillis());
-    expect(range('later this week', THURSDAY)).toMatchObject({ from: '2026-11-05', to: '2026-11-07' });
+    expect(resolveWhen({ period: 'this_week' }, MONDAY).from.toMillis()).toBe(MONDAY.toMillis());
+    expect(range({ period: 'this_week', portion: 'late' }, THURSDAY)).toEqual({ from: '2026-11-05', to: '2026-11-07' });
   });
 
-  it('returns null for windows that are already over, or phrases it cannot place', () => {
-    expect(resolveWhen('early this week', THURSDAY)).toBeNull();
-    expect(resolveWhen('when the moon is full', MONDAY)).toBeNull();
-    expect(resolveWhen('after the 45th', MONDAY)).toBeNull();
+  it('treats today as the coming weekday only while there is still time to book', () => {
+    expect(range({ weekday: 'monday' })).toEqual({ from: '2026-11-02', to: '2026-11-02' });
+    expect(range({ weekday: 'monday' }, MONDAY.set({ hour: 17, minute: 30 }))).toEqual({ from: '2026-11-09', to: '2026-11-09' });
   });
 
-  it('describes the window so the bot can confirm it back', () => {
-    expect(resolveWhen('later next week', MONDAY)!.description).toBe('later next week');
-    expect(resolveWhen('this weekend', MONDAY)!.description).toContain('closed Sundays');
+  it.each<[string, WhenSpec, DateTime]>([
+    ['a window that is already over', { period: 'this_week', portion: 'early' }, THURSDAY],
+    ['two anchors at once', { period: 'next_week', date: '2026-11-18' }, MONDAY],
+    ['an invalid date', { date: '2026-02-31' }, MONDAY],
+    ['an impossible month', { month: 13 }, MONDAY],
+    ['a negative offset', { inWeeks: -1 }, MONDAY],
+  ])('rejects %s with a message the bot can act on', (_case, spec, now) => {
+    expect(() => resolveWhen(spec, now)).toThrow(ValidationError);
   });
 });
