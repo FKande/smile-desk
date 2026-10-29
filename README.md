@@ -25,7 +25,7 @@ npm run db:reset -w @smile-desk/api   # optional: wipe the DB, it re-seeds on ne
 
 ## Demo script
 
-Data is seeded relative to today: six weeks of Mon–Sat slots, about 50% booked, today and tomorrow nearly full, one Saturday fully booked.
+Data is seeded relative to today: about seven months of Mon–Sat slots, about 50% booked (thinning to 30% past three months), today and tomorrow nearly full, one Saturday fully booked. Every boot tops up missing slots and demo patients without touching existing data.
 
 | Seeded patient | Date of birth | Good for |
 | --- | --- | --- |
