@@ -7,7 +7,7 @@ import { ConversationService } from './conversation.service.js';
 // A scripted model: each step looks at the transcript (e.g. the last tool result)
 // and returns either tool calls or a final reply, so the whole loop runs for real
 // against the database without an API key.
-type Step = (transcript: TranscriptItem[]) => { text?: string; calls?: Omit<ToolCall, 'id'>[] } | Error;
+type Step = (transcript: TranscriptItem[]) => { text?: string; calls?: Omit<ToolCall, 'id'>[]; failAfterStreaming?: boolean } | Error;
 
 class ScriptedProvider implements LlmProvider {
   calls = 0;
@@ -24,6 +24,9 @@ class ScriptedProvider implements LlmProvider {
     this.calls++;
     const out = step(request.transcript);
     if (out instanceof Error) throw out;
+    // Stream the text word by word, the way a real provider delivers deltas.
+    for (const word of (out.text ?? '').split(/(?<= )/)) if (word) request.onTextDelta?.(word);
+    if (out.failAfterStreaming) throw new Error('connection dropped mid-stream');
     const toolCalls = (out.calls ?? []).map((c, i) => ({ ...c, id: `call_${this.calls}_${i}` }));
     return {
       provider: this.name,
@@ -200,6 +203,64 @@ describe('ConversationService', () => {
       { role: 'patient', text: 'hi there' },
       { role: 'assistant', text: 'Hello!' },
     ]);
+  });
+
+  describe('streaming events', () => {
+    const record = () => {
+      const events: string[] = [];
+      return {
+        events,
+        handlers: {
+          start: () => events.push('start'),
+          delta: (t: string) => events.push(`delta:${t}`),
+          reset: () => events.push('reset'),
+          step: () => events.push('step'),
+          tool: (name: string, label: string) => events.push(`tool:${name}:${label}`),
+        },
+      };
+    };
+
+    it('streams text, marks tool steps, and the reply equals what was streamed', async () => {
+      const { service } = setup([
+        () => ({ text: 'Let me check. ', calls: [{ name: 'get_practice_info', input: { topic: 'hours' } }] }),
+        () => ({ text: 'We are open Mon to Sat.' }),
+      ]);
+      const { events, handlers } = record();
+      const reply = await service.handleMessage({ message: 'hours?' }, handlers);
+
+      expect(events).toEqual([
+        'start',
+        'delta:Let ',
+        'delta:me ',
+        'delta:check. ',
+        'step',
+        'tool:get_practice_info:Looking that up',
+        'delta:We ',
+        'delta:are ',
+        'delta:open ',
+        'delta:Mon ',
+        'delta:to ',
+        'delta:Sat.',
+      ]);
+      expect(reply.reply).toBe('Let me check.\n\nWe are open Mon to Sat.');
+    });
+
+    it('sends reset when a provider fails mid-stream, then the fallback streams cleanly', async () => {
+      const { service } = setup([() => ({ text: 'Half a sen', failAfterStreaming: true })], [() => ({ text: 'Hello from OpenAI' })]);
+      const { events, handlers } = record();
+      const reply = await service.handleMessage({ message: 'hi' }, handlers);
+
+      expect(events).toEqual(['start', 'delta:Half ', 'delta:a ', 'delta:sen', 'reset', 'delta:Hello ', 'delta:from ', 'delta:OpenAI']);
+      expect(reply.reply).toBe('Hello from OpenAI');
+    });
+
+    it('rejects bad input before any event is sent', async () => {
+      const { service } = setup([() => ({ text: 'never' })]);
+      const { events, handlers } = record();
+      await expect(service.handleMessage({ conversationId: 'conv_missing', message: 'hi' }, handlers)).rejects.toThrow('not found');
+      await expect(service.handleMessage({ message: '   ' }, handlers)).rejects.toThrow('empty');
+      expect(events).toEqual([]);
+    });
   });
 
   it('records patient feedback against the conversation', async () => {
