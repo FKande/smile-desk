@@ -389,7 +389,7 @@ render.yaml                     Render Blueprint
 | Streaming | Server-Sent Events over `POST` |
 | Tests | Vitest + Supertest (API), `node:test` (web), a real-model eval runner |
 | Tooling | npm workspaces, oxlint, ESLint, TypeScript, GitHub Actions |
-| Hosting | Render (Blueprint) |
+| Hosting | Vercel (web), Render Starter + persistent disk (API) |
 
 ## Built with AI assistance
 
