@@ -128,7 +128,7 @@ export function scriptTurn(conversationId: string, conversation: MockConversatio
     );
   } else if (conversation.pending && /\d|\b(first|second|yes|works|that one|sure|ok|okay)\b/.test(text)) {
     const emergency = conversation.pending === "emergency";
-    frames.push(tool("book_appointment", "Booking"));
+    frames.push(tool("book_appointments", "Booking"));
     appointments = [
       emergency
         ? card({
@@ -155,13 +155,13 @@ export function scriptTurn(conversationId: string, conversation: MockConversatio
     );
   } else if (/reschedul|move|change/.test(text)) {
     frames.push(
-      tool("find_appointments", "Checking your appointments"),
+      tool("get_my_appointments", "Checking your appointments"),
       tool("reschedule_appointment", "Rescheduling"),
     );
     appointments = [card({ action: "rescheduled", label: slot(5, "11:00 AM") })];
     say(`Done. I moved your cleaning to ${appointments[0].label}. Your old time is free for someone else.`);
   } else if (/cancel/.test(text)) {
-    frames.push(tool("find_appointments", "Checking your appointments"), tool("cancel_appointment", "Cancelling"));
+    frames.push(tool("get_my_appointments", "Checking your appointments"), tool("cancel_appointment", "Cancelling"));
     appointments = [card({ action: "cancelled", status: "cancelled" })];
     say("Your cleaning is cancelled. Whenever you're ready to rebook, just let me know.");
   } else if (/insur|pay|price|cost|afford/.test(text)) {
