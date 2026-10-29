@@ -125,4 +125,6 @@ CREATE TABLE IF NOT EXISTS feedback (
   comment         TEXT,
   created_at      TEXT NOT NULL
 );
+-- The staff Feedback view reads the newest 50, so it walks this index instead of sorting.
+CREATE INDEX IF NOT EXISTS feedback_created ON feedback (created_at);
 `;

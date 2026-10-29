@@ -116,6 +116,24 @@ describe('HTTP API (e2e)', () => {
     await request(server).get('/staff/notifications?status=open').expect(200);
   });
 
+  it('GET /staff/feedback shows patient ratings, newest first, filterable by rating', async () => {
+    const server = app.getHttpServer();
+    const res = await request(server).post('/chat/stream').send({ message: 'hello' }).expect(200);
+    const [, start] = parseSse(res.text)[0];
+    const id = start.conversationId as string;
+    await request(server).post(`/chat/${id}/feedback`).send({ rating: 1 }).expect(204);
+    await request(server).post(`/chat/${id}/feedback`).send({ rating: -1, comment: 'Too slow' }).expect(204);
+
+    const all = await request(server).get('/staff/feedback').expect(200);
+    expect(all.body).toMatchObject([
+      { conversationId: id, rating: -1, comment: 'Too slow', patientName: null, excerpt: 'hello' },
+      { conversationId: id, rating: 1, comment: null },
+    ]);
+    const down = await request(server).get('/staff/feedback?rating=-1').expect(200);
+    expect(down.body.map((f: { rating: number }) => f.rating)).toEqual([-1]);
+    await request(server).get('/staff/feedback?rating=0').expect(400);
+  });
+
   it('PUT /admin/llm validates and applies changes live', async () => {
     const server = app.getHttpServer();
     await request(server).put('/admin/llm').set('x-admin-token', 'test-admin-token').send({ anthropic: { maxTokens: 1 } }).expect(400);
