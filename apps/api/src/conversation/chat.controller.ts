@@ -20,6 +20,7 @@ export class ChatController {
 
   /** One patient message in, the assistant's reply out. Omit conversationId to start a new chat. */
   @Post()
+  @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   send(@Body() body: unknown): Promise<ChatReply> {
     return this.conversations.handleMessage(parseBody(chatBody, body));

@@ -22,9 +22,9 @@ function isFailoverWorthy(err: unknown): boolean {
 
 const describe = (err: unknown): string =>
   err instanceof Anthropic.APIError || err instanceof OpenAI.APIError
-    ? `HTTP ${err.status ?? 'connection'}: ${err.message.slice(0, 160)}`
+    ? `HTTP ${err.status ?? 'connection'}: ${err.message.slice(0, 400)}`
     : err instanceof Error
-      ? err.message.slice(0, 160)
+      ? err.message.slice(0, 400)
       : String(err);
 
 @Injectable()
