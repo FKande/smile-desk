@@ -45,6 +45,8 @@ next-env.d.ts
 /_private/
 /CLAUDE.local.md
 /.claude/skills/assignment/
+/.agents/
+/AGENTS.override.md
 
 # keep the env template
 !.env.example
