@@ -192,14 +192,14 @@ export class ConversationService {
 
   private async runTurn(conversationId: string, conversation: ConversationRow, message: string, events: ChatEvents): Promise<ChatReply> {
     const { maxToolIterations, historyLimit } = this.settings.get().harness;
+    const turnId = this.append(conversationId, { kind: 'user', text: message, context: this.contextBlock(conversation.patient_id) });
     const session: ToolSession = {
       conversationId,
+      turnId,
       actorId: conversation.patient_id,
       escalated: conversation.outcome === 'escalated',
       changedAppointments: [],
     };
-
-    const turnId = this.append(conversationId, { kind: 'user', text: message, context: this.contextBlock(session.actorId) });
     const transcript = this.loadItems(conversationId, historyLimit);
     // Text from every model step this turn, in order: the reply is what the patient watched stream.
     const texts: string[] = [];
