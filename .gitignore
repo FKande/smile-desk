@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# private working notes (assignment text, email, decision log)
+/_private/
+
+# keep the env template
+!.env.example
