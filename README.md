@@ -1,5 +1,7 @@
 # Smile Desk
 
+[![CI](https://github.com/FKande/smile-desk/actions/workflows/ci.yml/badge.svg)](https://github.com/FKande/smile-desk/actions/workflows/ci.yml)
+
 Meet **Maya**, the AI front desk for a dental practice. New patients register, existing patients verify who they are, and either can book, reschedule or cancel a cleaning, checkup or emergency visit, including back-to-back visits for a whole family and fuzzy dates like "later next week after work". Emergencies alert the office team instantly, and staff work from a live alert queue.
 
 **Stack:** NestJS API · Next.js + Tailwind web app · SQLite (self-seeding) · Claude by default, OpenAI as automatic failover.
@@ -11,7 +13,7 @@ Meet **Maya**, the AI front desk for a dental practice. New patients register, e
 ```bash
 git clone https://github.com/FKande/smile-desk.git && cd smile-desk
 cp .env.example .env    # set ANTHROPIC_API_KEY (OPENAI_API_KEY optional, for failover)
-npm install             # Node 22+; no native build toolchain needed
+npm install             # Node 22.22+ or 24.15+; no native build toolchain needed
 npm run dev             # web on :3000, API on :4000
 npm run db:reset -w @smile-desk/api   # optional: wipe the DB, it re-seeds on next start
 ```
@@ -22,6 +24,9 @@ npm run db:reset -w @smile-desk/api   # optional: wipe the DB, it re-seeds on ne
 | http://localhost:3000/staff | Staff alert queue and patient feedback with read-only transcripts |
 | http://localhost:3000/design-system | Live UI component catalog, light and dark |
 | http://localhost:4000/health | API liveness and which provider keys are set |
+| http://localhost:3000/?mock=1 | No API key? A scripted mock of the chat UI (dev only) |
+
+Without a key, real chat still answers safely: a short apology with the practice phone number, plus a callback alert on `/staff`.
 
 ## Demo script
 
@@ -157,7 +162,7 @@ npm run eval -w @smile-desk/api           # real-model evals against a running A
 | `LLM_ACTIVE_PROVIDER` | `anthropic` | `anthropic` or `openai` |
 | `ANTHROPIC_MODEL` | `claude-opus-5-5` | Or Sonnet / Haiku 5.5 |
 | `ADMIN_TOKEN` | `change-me` | Guards `/admin/llm` only; the staff page is open |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Where the web app finds the API (build time) |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Where the web app finds the API (build time). Read by Next.js from `apps/web/.env.local` or the shell, not the root `.env` |
 
 Everything else is in [`.env.example`](.env.example). Tune live, without a restart, via `GET` / `PUT` / `DELETE /admin/llm` (header `x-admin-token`):
 
