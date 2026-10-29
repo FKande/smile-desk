@@ -11,6 +11,7 @@
     "dev:web": "npm run dev -w @smile-desk/web",
     "build": "npm run build -w @smile-desk/api && npm run build -w @smile-desk/web",
     "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test -w @smile-desk/api"
   },
   "devDependencies": {
