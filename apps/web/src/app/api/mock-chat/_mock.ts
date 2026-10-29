@@ -85,8 +85,7 @@ export function scriptTurn(conversationId: string, conversation: MockConversatio
   let degraded = false;
 
   const say = (part: string) => {
-    if (reply) frames.push(step);
-    frames.push(...words(part));
+    frames.push(...words(part), step); // a model step ends; tools may follow
     reply = reply ? `${reply}\n\n${part}` : part;
   };
 
@@ -121,13 +120,13 @@ export function scriptTurn(conversationId: string, conversation: MockConversatio
     say(
       "I'm sorry you're dealing with that. I've let our front desk know what's going on, and someone will call you shortly.",
     );
-    frames.push(tool("find_open_slots", "Checking emergency openings"));
+    frames.push(tool("find_open_slots", "Checking open times"));
     say(
       `These are the soonest emergency openings:\n• ${slot(0, "2:00 PM")} with Dr. Ana Ruiz\n• ${slot(0, "4:30 PM")} with Dr. Ana Ruiz\n\nWould either of those work? If you have severe swelling or trouble breathing, please call 911.`,
     );
   } else if (conversation.pending && /\d|\b(first|second|yes|works|that one|sure|ok|okay)\b/.test(text)) {
     const emergency = conversation.pending === "emergency";
-    frames.push(tool("book_appointment", "Booking your appointment"));
+    frames.push(tool("book_appointment", "Booking"));
     appointments = [
       emergency
         ? card({
@@ -153,16 +152,13 @@ export function scriptTurn(conversationId: string, conversation: MockConversatio
     );
   } else if (/reschedul|move|change/.test(text)) {
     frames.push(
-      tool("find_appointments", "Looking up your appointment"),
-      tool("reschedule_appointment", "Moving your appointment"),
+      tool("find_appointments", "Checking your appointments"),
+      tool("reschedule_appointment", "Rescheduling"),
     );
     appointments = [card({ action: "rescheduled", label: slot(5, "11:00 AM") })];
     say(`Done. I moved your cleaning to ${appointments[0].label}. Your old time is free for someone else.`);
   } else if (/cancel/.test(text)) {
-    frames.push(
-      tool("find_appointments", "Looking up your appointment"),
-      tool("cancel_appointment", "Cancelling your appointment"),
-    );
+    frames.push(tool("find_appointments", "Checking your appointments"), tool("cancel_appointment", "Cancelling"));
     appointments = [card({ action: "cancelled", status: "cancelled" })];
     say("Your cleaning is cancelled. Whenever you're ready to rebook, just let me know.");
   } else if (/insur|pay|price|cost|afford/.test(text)) {
