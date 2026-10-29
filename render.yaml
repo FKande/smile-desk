@@ -1,17 +1,23 @@
-# Render Blueprint: deploys the API and the web app from this repo.
+# Render Blueprint for the API. The web app is deployed on Vercel (see README → Deployment).
 # Dashboard → New → Blueprint → pick this repo. Render asks for the values marked
 # `sync: false` (the API keys) on first deploy; everything else is set here.
-# Both services redeploy automatically on every push to main.
+# Redeploys automatically on every push to main.
 
 services:
   - type: web
     name: smile-desk-api
     runtime: node
-    plan: free
+    # Starter, not free: free instances sleep after 15 minutes and have no persistent disk,
+    # so the demo database would reset on every wake-up.
+    plan: starter
     rootDir: .
     buildCommand: npm ci && npm run build -w @smile-desk/api
     startCommand: npm run start:prod -w @smile-desk/api
     healthCheckPath: /health
+    disk:
+      name: smile-desk-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "24"
@@ -21,23 +27,9 @@ services:
         sync: false
       - key: ADMIN_TOKEN
         generateValue: true
-      # Must match the web service's public URL (comma-separate several).
+      # The web app's public URL on Vercel (comma-separate several, e.g. a custom domain too).
       - key: WEB_ORIGIN
-        value: https://smile-desk-web.onrender.com
-      # The free plan's disk is ephemeral: the demo database re-seeds on each deploy or restart.
+        sync: false
+      # On the persistent disk, so bookings and staff alerts survive deploys and restarts.
       - key: DB_PATH
-        value: data/smile-desk.db
-
-  - type: web
-    name: smile-desk-web
-    runtime: node
-    plan: free
-    rootDir: .
-    buildCommand: npm ci && npm run build -w @smile-desk/web
-    startCommand: npm run start -w @smile-desk/web
-    envVars:
-      - key: NODE_VERSION
-        value: "24"
-      # Inlined at build time; must be the API service's public URL.
-      - key: NEXT_PUBLIC_API_URL
-        value: https://smile-desk-api.onrender.com
+        value: /var/data/smile-desk.db
