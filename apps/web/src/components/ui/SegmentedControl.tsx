@@ -31,25 +31,26 @@ export function SegmentedControl<T extends string>({
   className,
 }: SegmentedControlProps<T>) {
   const name = useId();
+  // A div with role="radiogroup" rather than <fieldset>: fieldset/legend carry
+  // browser layout quirks that break flex height and centering. Radios sharing
+  // a name still get arrow-key navigation natively.
   return (
-    <fieldset
-      className={cn(
-        "inline-flex h-(--control-h-md) items-stretch gap-1 rounded-full border border-subtle bg-subtle p-1",
-        className,
-      )}
+    <div
+      role="radiogroup"
+      aria-label={legend}
+      className={cn("inline-flex items-center gap-0.5 rounded-full border border-subtle bg-subtle p-0.5", className)}
     >
-      <legend className="sr-only">{legend}</legend>
       {options.map((option) => (
         <label
           key={option.value}
           title={option.iconOnly ? option.label : undefined}
           className={cn(
-            "inline-flex cursor-pointer select-none items-center justify-center gap-1.5 rounded-full text-label font-semibold text-secondary",
+            "inline-flex h-8 cursor-pointer select-none items-center justify-center gap-1.5 rounded-full text-label font-semibold leading-none text-secondary",
             "transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-out",
             "hover:text-default",
             "has-checked:bg-surface has-checked:text-default has-checked:shadow-raised",
             "has-focus-visible:focus-ring",
-            option.iconOnly ? "aspect-square" : "px-3",
+            option.iconOnly ? "w-8" : "min-w-10 px-3",
           )}
         >
           <input
@@ -64,6 +65,6 @@ export function SegmentedControl<T extends string>({
           <span className={option.iconOnly ? "sr-only" : undefined}>{option.label}</span>
         </label>
       ))}
-    </fieldset>
+    </div>
   );
 }

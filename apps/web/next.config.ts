@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Hide the floating Next.js dev badge; it overlaps the catalog sidebar.
+  devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
