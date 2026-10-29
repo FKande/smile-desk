@@ -44,9 +44,10 @@ const str = (description: string): Json => ({ type: 'string', description });
 const enumOf = (values: readonly string[], description: string): Json => ({ type: 'string', enum: [...values], description });
 const int = (description: string): Json => ({ type: 'integer', description });
 const optional = (schema: Json): Json => ({ ...schema, [OPTIONAL]: true });
+const withoutMarker = (schema: Json): Json => Object.fromEntries(Object.entries(schema));
 const object = (properties: Record<string, Json>): JsonSchemaObject => ({
   type: 'object',
-  properties: Object.fromEntries(Object.entries(properties).map(([k, { [OPTIONAL]: _, ...schema }]) => [k, schema])),
+  properties: Object.fromEntries(Object.entries(properties).map(([k, schema]) => [k, withoutMarker(schema)])),
   required: Object.keys(properties).filter((k) => !properties[k][OPTIONAL]),
   additionalProperties: false,
 });
