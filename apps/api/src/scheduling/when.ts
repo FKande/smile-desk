@@ -18,6 +18,8 @@ export type Portion = (typeof PORTIONS)[number];
 export type Weekday = (typeof WEEKDAYS)[number];
 
 export interface WhenSpec {
+  /** The patient's own words about timing, verbatim. Logged next to the resolved window. */
+  phrase?: string;
   /** Relative period the patient named. */
   period?: Period;
   /** Narrows a week (Mon–Tue / Tue–Thu / Thu–Sat) or a month (1–10 / 11–20 / 21–end). */
@@ -52,6 +54,7 @@ export function resolveWhen(spec: WhenSpec, now: DateTime): ResolvedWindow {
   const local = now.setZone(PRACTICE.timezone);
   const today = local.startOf('day');
   const thisWeek = today.startOf('week'); // ISO weeks start Monday
+  // `phrase` is informational only; every other field narrows the window.
   const anchors = [spec.date, spec.from, spec.period, spec.month, spec.inDays, spec.inWeeks].filter((v) => v !== undefined);
   if (anchors.length > 1) {
     throw new ValidationError('Use one of date, from/to, period, month, inDays or inWeeks, not several');
