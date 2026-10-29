@@ -28,11 +28,18 @@ export class OpenAiProvider implements LlmProvider {
     const params = this.buildParams(request, resolved.settings, resolved.effort);
     const client = this.getClient(resolved.settings);
 
-    const response = resolved.settings.stream
-      ? await client.responses
-          .stream({ ...params, stream_options: { include_obfuscation: resolved.settings.includeObfuscation } })
-          .finalResponse()
-      : await client.responses.create({ ...params, stream: false });
+    // A live consumer always gets a stream; the stream setting governs the non-streaming path.
+    let response: OpenAI.Responses.Response;
+    if (resolved.settings.stream || request.onTextDelta) {
+      const stream = client.responses.stream({
+        ...params,
+        stream_options: { include_obfuscation: resolved.settings.includeObfuscation },
+      });
+      if (request.onTextDelta) stream.on('response.output_text.delta', (event) => request.onTextDelta?.(event.delta));
+      response = await stream.finalResponse();
+    } else {
+      response = await client.responses.create({ ...params, stream: false });
+    }
 
     const toolCalls: ToolCall[] = response.output.flatMap((item) =>
       item.type === 'function_call' ? [{ id: item.call_id, name: item.name, input: parseArguments(item.arguments) }] : [],

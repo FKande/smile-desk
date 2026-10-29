@@ -55,8 +55,13 @@ export class LlmRouterService {
         continue;
       }
       const started = Date.now();
+      // If this provider streamed text and then failed, the next one starts from a clean slate.
+      let streamed = false;
+      const attempt: TurnRequest = request.onTextDelta
+        ? { ...request, onTextDelta: (text) => ((streamed = true), request.onTextDelta?.(text)) }
+        : request;
       try {
-        const result = await provider.runTurn(request);
+        const result = await provider.runTurn(attempt);
         const u = result.usage;
         this.logger.log(
           `${result.model} ${Date.now() - started}ms in=${u.inputTokens} out=${u.outputTokens} cache_read=${u.cacheReadTokens} cache_write=${u.cacheWriteTokens} stop=${result.stopReason}`,
@@ -66,6 +71,7 @@ export class LlmRouterService {
       } catch (err) {
         const reason = describe(err);
         attempts.push({ provider: name, reason });
+        if (streamed) request.onReset?.();
         this.logger.error(`${name} failed after ${Date.now() - started}ms: ${reason}`);
         if (!isFailoverWorthy(err)) break;
       }

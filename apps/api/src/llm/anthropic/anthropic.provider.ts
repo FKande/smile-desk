@@ -48,9 +48,11 @@ export class AnthropicProvider implements LlmProvider {
     const { params, betas } = this.buildParams(request, resolved.settings, resolved.effort);
     const client = this.getClient(resolved.settings);
 
-    const message = resolved.settings.stream
-      ? await this.streamWithJsonRetry(client, params, betas)
-      : await client.beta.messages.create({ ...params, betas });
+    // A live consumer always gets a stream; the stream setting governs the non-streaming path.
+    const message =
+      resolved.settings.stream || request.onTextDelta
+        ? await this.streamWithJsonRetry(client, params, betas, request)
+        : await client.beta.messages.create({ ...params, betas });
 
     const toolCalls: ToolCall[] = message.content
       .filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use')
@@ -79,13 +81,16 @@ export class AnthropicProvider implements LlmProvider {
   }
 
   /** With eager input streaming the SDK can fail to parse a tool input; re-issue that turn once. */
-  private async streamWithJsonRetry(client: Anthropic, params: Params, betas: string[]) {
+  private async streamWithJsonRetry(client: Anthropic, params: Params, betas: string[], request: TurnRequest) {
     for (let attempt = 0; ; attempt++) {
       try {
-        return await client.beta.messages.stream({ ...params, betas }).finalMessage();
+        const stream = client.beta.messages.stream({ ...params, betas });
+        if (request.onTextDelta) stream.on('text', (delta) => request.onTextDelta?.(delta));
+        return await stream.finalMessage();
       } catch (err) {
         if (err instanceof Anthropic.APIError || attempt >= 1) throw err;
         this.logger.warn('Tool input arrived as invalid JSON; re-issuing the turn');
+        request.onReset?.();
       }
     }
   }
