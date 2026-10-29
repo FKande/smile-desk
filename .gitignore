@@ -43,6 +43,8 @@ next-env.d.ts
 
 # private working notes (assignment text, email, decision log)
 /_private/
+/CLAUDE.local.md
+/.claude/skills/assignment/
 
 # keep the env template
 !.env.example
