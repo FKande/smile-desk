@@ -101,19 +101,37 @@ describe('HTTP API (e2e)', () => {
 
   it('admin routes require the token and never return secrets', async () => {
     await request(app.getHttpServer()).get('/admin/llm').expect(401);
-    await request(app.getHttpServer()).get('/staff/notifications').set('x-admin-token', 'wrong').expect(401);
+    await request(app.getHttpServer()).get('/admin/llm').set('x-admin-token', 'wrong').expect(401);
 
     const res = await request(app.getHttpServer()).get('/admin/llm').set('x-admin-token', 'test-admin-token').expect(200);
     expect(res.body.keys.anthropic).toBe(true);
     expect(JSON.stringify(res.body)).not.toContain('sk-ant-e2e-secret');
   });
 
-  it('staff routes reject unknown ids and filters with 404 / 400', async () => {
+  it('staff routes are open and reject unknown ids and filters with 404 / 400', async () => {
     const server = app.getHttpServer();
-    const auth = { 'x-admin-token': 'test-admin-token' };
-    await request(server).post('/staff/notifications/ntf_nope/acknowledge').set(auth).expect(404);
-    await request(server).get('/staff/notifications?status=bogus').set(auth).expect(400);
-    await request(server).get('/staff/notifications?status=open').set(auth).expect(200);
+    await request(server).get('/staff/notifications').expect(200);
+    await request(server).post('/staff/notifications/ntf_nope/acknowledge').expect(404);
+    await request(server).get('/staff/notifications?status=bogus').expect(400);
+    await request(server).get('/staff/notifications?status=open').expect(200);
+  });
+
+  it('GET /staff/feedback shows patient ratings, newest first, filterable by rating', async () => {
+    const server = app.getHttpServer();
+    const res = await request(server).post('/chat/stream').send({ message: 'hello' }).expect(200);
+    const [, start] = parseSse(res.text)[0];
+    const id = start.conversationId as string;
+    await request(server).post(`/chat/${id}/feedback`).send({ rating: 1 }).expect(204);
+    await request(server).post(`/chat/${id}/feedback`).send({ rating: -1, comment: 'Too slow' }).expect(204);
+
+    const all = await request(server).get('/staff/feedback').expect(200);
+    expect(all.body).toMatchObject([
+      { conversationId: id, rating: -1, comment: 'Too slow', patientName: null, excerpt: 'hello' },
+      { conversationId: id, rating: 1, comment: null },
+    ]);
+    const down = await request(server).get('/staff/feedback?rating=-1').expect(200);
+    expect(down.body.map((f: { rating: number }) => f.rating)).toEqual([-1]);
+    await request(server).get('/staff/feedback?rating=0').expect(400);
   });
 
   it('PUT /admin/llm validates and applies changes live', async () => {

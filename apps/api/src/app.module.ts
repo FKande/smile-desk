@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DomainErrorFilter } from './common/domain-error.filter.js';
 import { ConversationModule } from './conversation/conversation.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { FeedbackModule } from './feedback/feedback.module.js';
 import { HealthController } from './health.controller.js';
 import { LlmModule } from './llm/llm.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -20,6 +21,7 @@ import { SchedulingModule } from './scheduling/scheduling.module.js';
     NotificationsModule,
     LlmModule,
     ConversationModule,
+    FeedbackModule,
   ],
   controllers: [HealthController],
   providers: [

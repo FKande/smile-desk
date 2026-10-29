@@ -1,7 +1,7 @@
 import { StaffConsole } from "./_components/StaffConsole";
 
-/* /staff: the office team's live alert queue. Everything on it depends on the
- * admin token in localStorage, so the page itself is a client component. */
+/* /staff: the office team's live views. They poll the API from the browser,
+ * so the console itself is a client component. */
 export default function StaffPage() {
   return <StaffConsole />;
 }

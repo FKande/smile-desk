@@ -8,7 +8,7 @@ Meet **Maya**, the AI front desk for a dental practice. Patients chat with her t
 
 ## Try it
 
-> **Live demo:** https://smile-desk-ashy.vercel.app (patient chat) · https://smile-desk-ashy.vercel.app/staff (staff alerts; the token is shared separately)
+> **Live demo:** https://smile-desk-ashy.vercel.app (patient chat) · https://smile-desk-ashy.vercel.app/staff (staff alerts and patient feedback, no sign-in)
 >
 > Web on Vercel, API on Render (always on). See [Deployment](#deployment).
 
@@ -30,7 +30,7 @@ npm run dev             # web on http://localhost:3000, API on http://localhost:
 | URL | What it is |
 | --- | --- |
 | http://localhost:3000 | Patient chat with Maya |
-| http://localhost:3000/staff | Staff alert queue. Enter the `ADMIN_TOKEN` from `.env` (`change-me` in the template). |
+| http://localhost:3000/staff | Staff page, open in this demo (no sign-in): the live alert queue, plus a Feedback view of patient 👍/👎 ratings with comments and read-only transcripts. |
 | http://localhost:3000/design-system | Live catalog of the UI components, in light and dark |
 | http://localhost:4000/health | Liveness, plus which provider keys are set (never the keys themselves) |
 
@@ -322,7 +322,7 @@ Every variable is documented in [`.env.example`](.env.example). The key ones:
 | `ANTHROPIC_MODEL` | `claude-opus-5-5` | Also Sonnet 5.5, Haiku 5.5 and others |
 | `OPENAI_MODEL` | `gpt-6.1-sol` | Also `gpt-6-luna` for high volume, and others |
 | `ANTHROPIC_PROMPT_CACHE` | `5m` | `off`, `5m` or `1h` |
-| `ADMIN_TOKEN` | `change-me` | Required for `/staff` and `/admin/llm` (sent as `x-admin-token`) |
+| `ADMIN_TOKEN` | `change-me` | Required for `/admin/llm` only (sent as `x-admin-token`); the staff page is open |
 | `PORT` / `WEB_ORIGIN` | `4000` / `http://localhost:3000` | API port and allowed CORS origins (comma-separated) |
 | `DB_PATH` | `data/smile-desk.db` | SQLite file, relative to `apps/api` |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Where the web app finds the API (inlined at build time) |

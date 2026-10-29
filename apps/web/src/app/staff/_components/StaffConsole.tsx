@@ -1,35 +1,23 @@
 "use client";
 
-import { useCallback, useState, useSyncExternalStore } from "react";
-import { Skeleton } from "@/components/feedback/Skeleton";
+import { useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { ThemeToggle } from "@/components/theme/PreferenceControls";
-import { Button } from "@/components/ui/Button";
-import { readAdminToken, subscribeAdminToken, writeAdminToken } from "@/lib/staff-client";
+import { SegmentedControl, type SegmentedOption } from "@/components/ui/SegmentedControl";
 import { AlertQueue } from "./AlertQueue";
-import { TokenForm } from "./TokenForm";
+import { FeedbackList } from "./FeedbackList";
 
-/** The page shell: header, then either the token form or the queue. The
- *  token is undefined until hydration (the server has no storage). */
+type View = "alerts" | "feedback";
+const viewOptions: SegmentedOption<View>[] = [
+  { value: "alerts", label: "Alerts", icon: "bell" },
+  { value: "feedback", label: "Feedback", icon: "message" },
+];
+
+/** The page shell: header, a view switch, then the alert queue or patient
+ *  feedback. Both stay mounted, so the queue keeps polling (and keeps its
+ *  filter and "New" marks) while someone reads feedback. */
 export function StaffConsole() {
-  const token = useSyncExternalStore(subscribeAdminToken, readAdminToken, () => undefined);
-  const [tokenError, setTokenError] = useState<string | null>(null);
-
-  function signIn(next: string) {
-    setTokenError(null);
-    writeAdminToken(next);
-  }
-
-  // Stable, so the queue's polling effect doesn't restart on every render.
-  const rejectToken = useCallback(() => {
-    writeAdminToken(null);
-    setTokenError("That token didn't work. Check it and try again.");
-  }, []);
-
-  function signOut() {
-    setTokenError(null);
-    writeAdminToken(null);
-  }
+  const [view, setView] = useState<View>("alerts");
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 px-(--gutter) py-8 sm:py-12">
@@ -39,28 +27,21 @@ export function StaffConsole() {
             <Icon name="bell" size="lg" />
           </span>
           <div className="flex min-w-0 flex-col">
-            <h1 className="text-heading font-bold">Staff alerts</h1>
-            <p className="text-body-sm text-secondary">Emergencies, hand-offs and callbacks from the assistant</p>
+            <h1 className="text-heading font-bold">Staff</h1>
+            <p className="text-body-sm text-secondary">Alerts from the assistant, and what patients said about it</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          {token ? (
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              Sign out
-            </Button>
-          ) : null}
-        </div>
+        <ThemeToggle />
       </header>
 
-      {token === undefined ? (
-        <Skeleton radius="xl" className="h-56" />
-      ) : token ? (
-        // Keyed by token so a new sign-in starts from a clean queue.
-        <AlertQueue key={token} token={token} onUnauthorized={rejectToken} />
-      ) : (
-        <TokenForm error={tokenError} onSubmit={signIn} />
-      )}
+      <SegmentedControl legend="Staff view" options={viewOptions} value={view} onChange={setView} className="self-start" />
+
+      <div hidden={view !== "alerts"}>
+        <AlertQueue />
+      </div>
+      <div hidden={view !== "feedback"}>
+        <FeedbackList />
+      </div>
     </main>
   );
 }
