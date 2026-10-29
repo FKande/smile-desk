@@ -331,6 +331,29 @@ describe('ConversationService', () => {
     });
   });
 
+  it('can re-book a slot the patient cancelled earlier in the same conversation', async () => {
+    let slotId = '';
+    const book = () => ({ calls: [{ name: 'book_appointments', input: { bookings: [{ patient_id: 'pat_maria_garcia', slot_id: slotId, appointment_type: 'cleaning', reason: null }] } }] });
+    const { service, ctx } = setup([
+      () => ({ calls: [{ name: 'verify_patient', input: { first_name: 'Maria', last_name: 'Garcia', date_of_birth: '1995-06-21' } }] }),
+      () => ({ calls: [{ name: 'find_open_slots', input: { appointment_type: 'cleaning', when: { period: 'next_week' } } }] }),
+      (t) => ((slotId = lastResult(t, 'find_open_slots').options[0].slot_id), book()),
+      () => ({ text: 'Booked.' }),
+      (t) => ({ calls: [{ name: 'cancel_appointment', input: { appointment_id: lastResult(t, 'book_appointments').booked[0].appointment_id } }] }),
+      () => ({ text: 'Cancelled.' }),
+      book, // the very same booking request, in a new turn
+      () => ({ text: 'Booked again.' }),
+    ]);
+
+    const first = await service.handleMessage({ message: 'Book me a cleaning next week' });
+    await service.handleMessage({ conversationId: first.conversationId, message: 'Actually cancel it' });
+    const again = await service.handleMessage({ conversationId: first.conversationId, message: 'Sorry, book that same time again' });
+
+    expect(again.appointments).toEqual([expect.objectContaining({ action: 'booked', status: 'booked' })]);
+    expect(again.appointments[0].appointmentId).not.toBe(first.appointments[0].appointmentId);
+    expect(ctx.scheduling.upcoming(['pat_maria_garcia']).filter((a) => a.type === 'cleaning')).toHaveLength(1);
+  });
+
   it('records patient feedback against the conversation', async () => {
     const { service, ctx } = setup([() => ({ text: 'Hello!' })]);
     const { conversationId } = await service.handleMessage({ message: 'hi' });

@@ -4,7 +4,7 @@ import { buildTools, type ToolSession } from './tools.js';
 describe('tools', () => {
   let ctx: TestContext;
   let tools: ReturnType<typeof buildTools>;
-  const session = (): ToolSession => ({ conversationId: 'conv_test', actorId: null, escalated: false, changedAppointments: [] });
+  const session = (): ToolSession => ({ conversationId: 'conv_test', turnId: 'msg_test', actorId: null, escalated: false, changedAppointments: [] });
 
   beforeEach(() => {
     ctx = createTestContext();

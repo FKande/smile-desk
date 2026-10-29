@@ -13,6 +13,8 @@ import type { Clock } from '../common/clock.js';
 /** Per-conversation state the tools read and write. Identity lives here, never in model output. */
 export interface ToolSession {
   conversationId: string;
+  /** The patient message that started this turn. Scopes idempotency to one turn's retries. */
+  turnId: string;
   /** The verified (or newly registered) patient this conversation acts for. */
   actorId: string | null;
   escalated: boolean;
@@ -374,7 +376,9 @@ export function buildTools(deps: ToolDeps) {
       }),
       run: (input, session) => {
         const actorId = requireActor(session);
-        const requestId = createHash('sha256').update(`${session.conversationId}|${JSON.stringify(input.bookings)}`).digest('hex').slice(0, 32);
+        // Same turn + same bookings = a retry, so it returns the first result. A later turn
+        // (e.g. re-booking a slot the patient just cancelled) gets a fresh key.
+        const requestId = createHash('sha256').update(`${session.turnId}|${JSON.stringify(input.bookings)}`).digest('hex').slice(0, 32);
         const booked = scheduling.bookMany(
           input.bookings.map((b) => ({ patientId: b.patient_id, slotId: b.slot_id, type: b.appointment_type, reason: b.reason ?? undefined })),
           { bookedById: actorId, requestId },

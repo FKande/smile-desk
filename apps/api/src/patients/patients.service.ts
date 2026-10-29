@@ -149,13 +149,16 @@ export class PatientsService {
     ).map(toPatient);
   }
 
-  /** A patient can act for themselves, their minors, and members of their household. */
+  /** A patient can act for themselves and their minors; adults can also act for their household. */
   canActFor(actorId: string, patientId: string): boolean {
     if (actorId === patientId) return true;
     const actor = this.findById(actorId);
     const patient = this.findById(patientId);
     if (!actor || !patient) return false;
-    return patient.guardianId === actor.id || (!!actor.householdId && actor.householdId === patient.householdId);
+    if (patient.guardianId === actor.id) return true;
+    // Household access (spouses, a parent who isn't the listed guardian) is for adults only:
+    // a verified child can manage their own visits, not their parents'.
+    return !!actor.householdId && actor.householdId === patient.householdId && !isMinor(actor.dateOfBirth, this.clock.now());
   }
 
   private insert(
