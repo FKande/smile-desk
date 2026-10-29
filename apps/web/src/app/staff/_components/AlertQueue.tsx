@@ -41,13 +41,7 @@ const emptyCopy: Record<Filter, { title: string; body: string }> = {
   all: { title: "No alerts yet", body: "When the assistant needs the team, its alerts land here." },
 };
 
-type AlertQueueProps = {
-  token: string;
-  /** The API rejected the token (401): the console signs out and asks again. */
-  onUnauthorized: () => void;
-};
-
-export function AlertQueue({ token, onUnauthorized }: AlertQueueProps) {
+export function AlertQueue() {
   const { toast } = useToast();
   const [filter, setFilter] = useState<Filter>("open");
   const [items, setItems] = useState<StaffNotification[] | null>(null);
@@ -71,7 +65,7 @@ export function AlertQueue({ token, onUnauthorized }: AlertQueueProps) {
     async (signal?: AbortSignal) => {
       const seq = ++requestSeq.current;
       try {
-        const list = await listNotifications(token, filter === "all" ? undefined : filter, signal);
+        const list = await listNotifications(filter === "all" ? undefined : filter, signal);
         if (seq !== requestSeq.current) return;
         // The API sorts too; UTC ISO strings compare correctly as text.
         list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -88,14 +82,10 @@ export function AlertQueue({ token, onUnauthorized }: AlertQueueProps) {
         else if (urgent.length > 1) setAnnouncement(`${urgent.length} new urgent alerts. Newest: ${urgent[0].summary}`);
       } catch (caught) {
         if (signal?.aborted || seq !== requestSeq.current) return;
-        if (caught instanceof StaffApiError && caught.status === 401) {
-          onUnauthorized();
-          return;
-        }
         setError(caught instanceof StaffApiError ? caught : new StaffApiError(null, "Something went wrong."));
       }
     },
-    [token, filter, onUnauthorized],
+    [filter],
   );
 
   useEffect(() => {
@@ -141,13 +131,9 @@ export function AlertQueue({ token, onUnauthorized }: AlertQueueProps) {
   async function acknowledge(target: StaffNotification) {
     setAcking((current) => new Set(current).add(target.id));
     try {
-      const updated = await acknowledgeNotification(token, target.id);
+      const updated = await acknowledgeNotification(target.id);
       setItems((current) => current?.map((n) => (n.id === updated.id ? updated : n)) ?? current);
-    } catch (caught) {
-      if (caught instanceof StaffApiError && caught.status === 401) {
-        onUnauthorized();
-        return;
-      }
+    } catch {
       toast({
         tone: "danger",
         title: "Couldn't acknowledge that alert",
@@ -164,7 +150,6 @@ export function AlertQueue({ token, onUnauthorized }: AlertQueueProps) {
 
   const shown = items?.map((n) => (acking.has(n.id) ? { ...n, status: "acknowledged" as const } : n)) ?? null;
   const openUrgent = shown?.filter((n) => n.status === "open" && n.priority === "urgent").length ?? 0;
-  const disabled = error?.status === 503;
 
   return (
     <section aria-labelledby="queue-heading" className="flex flex-col gap-4">
@@ -197,18 +182,7 @@ export function AlertQueue({ token, onUnauthorized }: AlertQueueProps) {
         </p>
       ) : null}
 
-      {disabled ? (
-        <Alert
-          tone="warning"
-          title="Admin access is disabled on the server (ADMIN_TOKEN not set)."
-          description="Start the API with ADMIN_TOKEN set, then try again."
-          actions={
-            <Button variant="secondary" size="sm" iconStart="refresh" onClick={refresh} loading={refreshing}>
-              Try again
-            </Button>
-          }
-        />
-      ) : error && shown ? (
+      {error && shown ? (
         <Alert
           tone="warning"
           urgent={false}
@@ -233,7 +207,7 @@ export function AlertQueue({ token, onUnauthorized }: AlertQueueProps) {
       ) : null}
 
       {shown === null ? (
-        disabled || error ? null : <QueueSkeleton />
+        error ? null : <QueueSkeleton />
       ) : shown.length === 0 ? (
         <Card className="items-center py-10 text-center">
           <span className="grid size-12 place-items-center rounded-full bg-success-subtle text-success-text">
