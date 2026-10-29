@@ -449,6 +449,14 @@ export function buildTools(deps: ToolDeps) {
         callback_phone: nullish(z.string().max(40)),
       }),
       run: (input, session) => {
+        // A patient repeating "get me a human" shouldn't page the team again for the same thing.
+        const existing = notifications
+          .list('open')
+          .find((n) => n.conversationId === session.conversationId && n.kind === input.kind);
+        if (existing) {
+          session.escalated = true;
+          return { notified: true, already_notified: true, reference: existing.id.slice(-6).toUpperCase() };
+        }
         const who = session.actorId ? patients.findById(session.actorId) : null;
         const name = who ? `${who.firstName} ${who.lastName}` : (input.patient_name ?? 'Unverified patient');
         const phone = input.callback_phone ?? (who ? formatPhone(who.phone) : null);
