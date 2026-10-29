@@ -226,3 +226,161 @@ Patients range from teenagers to grandparents booking for the whole family, so t
 - **Phone first:** checked at 360–1440 px at default and largest text size. The catalog's Chat page has a Phone / Desktop preview switch.
 - **No new dependencies:** inline SVG icons, fonts self-hosted by `next/font`, and hand-written contrast math.
 
+## Prioritization and scope
+
+The brief asks to treat this as a production app for hundreds of locations and 10,000+ conversations a day. My rule was: **build what a patient's booking and safety depend on, and make it correct. Everything else is either already a setting or a named next step with a reason.**
+
+### What's load-bearing, and why it came first
+
+| Area | Why it's load-bearing |
+| --- | --- |
+| **Booking correctness** (DB-enforced uniqueness, atomic family bookings, idempotency, lead time, emergency holds) | A double-booked chair or a half-booked family is a real person turned away at the front desk. At 10k conversations a day, races are certain, not hypothetical. |
+| **Identity** (server-held actor, guardian rules, no-leak mismatches) | A chatbot that reveals or changes someone else's appointment is a privacy incident. This had to be enforced in code, never trusted to the prompt. |
+| **Emergencies** (alert in code, danger-sign triage) | The highest patient-impact path. Staff must hear about it even if the model forgets to call a tool. |
+| **Dates** (structured extraction + tested math) | Every booking flows through a date window. A wrong window quietly offers the wrong days, which is worse than an error. |
+| **Failover and degradation** | A provider outage shouldn't become a practice outage. The worst case is a callback ticket and the phone number, never a dead end. |
+| **Streaming** | A reply that takes 3–14 s feels broken. Streaming shows the first words in about 2 s. |
+
+### Consciously deferred, with the production answer
+
+| Gap today | Production answer |
+| --- | --- |
+| Name + date of birth is weak identity (birth dates are guessable) | A one-time SMS code to the phone on file |
+| No hold on a slot while the patient decides | A 5-minute soft hold. Today a taken slot returns `slot_unavailable` and Maya re-offers. |
+| The per-conversation lock lives in process memory | A Redis or Postgres advisory lock, so any instance can serve any turn. The API is otherwise stateless: all state is in the database. |
+| SQLite allows one writer at a time | Postgres with the same location-scoped schema, and read replicas for availability search |
+| Health-data privacy: plain-text transcripts, names in staff alerts, no BAAs | Encryption at rest, personal data scrubbed from logs, and a BAA plus zero-retention terms with each provider (`store: false` on OpenAI is a start) |
+| No practice-management-system integration or real insurance verification | Adapters behind `SchedulingService` and `PatientsService`, which are already the only code that touches the data |
+| One location (the schema is multi-location, routing isn't) | Resolve the location from the phone number or widget key, and serve per-location policies through `get_practice_info`, moving to retrieval once there are hundreds of locations |
+| No reminders, waitlist or no-show policy | Scheduled jobs over the same services |
+| Web chat only | The tools are channel-agnostic, so the same tools can back voice and SMS |
+| Observability is structured logs (latency, tokens, cache hits, tool outcomes) | Per-conversation traces, and alerts on booking-failure rate and fallback rate |
+| Feedback is a table and an endpoint | A review queue of 👎 conversations → prompt and tool fixes → each one added to the eval set |
+| Real-model evals run by hand | A scripted scenario suite against the real model, run nightly and before prompt or model changes, not on every PR (it costs money and results vary slightly). In progress in PR #7. |
+
+### Failure modes and how they're handled
+
+| Failure | What happens |
+| --- | --- |
+| Active provider down, rate-limited or misconfigured | One-hop failover to the other provider. A provider with no key is skipped. |
+| Both providers down | A safe reply with the practice phone, plus a staff callback ticket. The `degraded` flag shows a gentle notice in the UI. |
+| Provider fails mid-stream | A `reset` event drops that step's partial text, and the fallback provider streams the step cleanly |
+| Two patients race for the same slot | The unique index lets exactly one win. The other gets `slot_unavailable` and new options. |
+| Retries (SDK, network, a repeated tool call) | SDK retries are bounded (2), the router fails over once so retries don't multiply, and bookings are idempotent |
+| Runaway tool loop | Capped at 8 model calls per message, then a polite hand-off and a staff callback |
+| A tool crashes or gets invalid input | An error result the model can apologize or recover from. The turn never crashes. |
+| Browser disconnects mid-turn | The turn finishes server-side and the reply is restored on the next load |
+| Prompt injection | Maya declines and stays in character. More importantly, identity, permissions and emergency alerts are enforced in code, so a successful injection still can't act for another patient. |
+| Bad input (empty, over 2,000 characters, unknown conversation) | A clear 400 or 404 before any model call. Rate limits: 20 messages a minute per client on chat, 60 requests a minute per client elsewhere. |
+| A bad setting | Validated with Zod. Bad env values are skipped with a warning, bad UI changes are rejected, and settings a model rejects are downgraded instead of failing. |
+
+### Cost at scale
+
+These are rough numbers from live runs and published prices. A typical conversation makes about **8 model calls**. Each call reads about **7k tokens from cache** (billed at about 10% of the input price) and writes about **200–300 output tokens**, so output dominates the cost.
+
+| Model | Per conversation | At 10k conversations a day |
+| --- | --- | --- |
+| Claude Opus 5.5 (default) | about $0.05–0.06 | about $500–600 |
+| Claude Sonnet 5.5 | about half of Opus | about $250–300 |
+| Claude Haiku 5.5 | about $0.002 | about $20 |
+
+The levers, in order:
+
+1. Prompt caching (done and measured).
+2. Effort and verbosity (already settings).
+3. The cheapest model that passes the scenario evals.
+4. Routing simple FAQ turns to a cheap model.
+
+## Testing
+
+| Command | What it covers |
+| --- | --- |
+| `npm test` | API unit tests (Vitest, in-memory SQLite, fixed clock) and web tests (`node:test`) |
+| `npm run test:e2e -w @smile-desk/api` | HTTP end to end: SSE frames from `/chat/stream`, 400 / 404 handling, admin auth that never returns secrets, staff filters, live settings changes |
+| `npm run lint` · `npm run typecheck` · `npm run build` | oxlint (API), ESLint (web), TypeScript, production builds |
+
+- **The agent loop runs against a scripted model**, so the conversation engine is tested deterministically. The tests cover registration and booking, refusing to act before verification, identity remembered across turns, automatic emergency alerts, atomic family booking, tool-error recovery, failover, missing keys, a total outage, runaway loops, the append-only transcript, the streaming event order, and mid-stream failover.
+- **The domain layer** covers the double-booking race, idempotency, guardian and spouse permissions, emergency holds, part-of-day filtering, the fully booked Saturday, and identity checks (including the two David Chens). Date resolution is table-driven: each row is a patient phrase, the fields the model fills, and the expected dates.
+- **The web tests** cover the SSE frame parser, stream-text accumulation, and the design-system contrast and token-usage guards.
+- **CI** (`.github/workflows/ci.yml`) runs lint, typecheck, unit and e2e tests, and the build on every pull request and every push to `main`.
+- **Live runs** of every core scenario on both Claude and OpenAI before merging. That's where the four schema bugs above were found.
+- **Real-model evals** (PR #7, in progress) add a repeatable suite of ten scripted patient conversations that check end states (the right card on the right days, an urgent alert raised, nothing leaked) rather than wording. They're meant to run nightly, not in CI.
+
+## Configuration
+
+Every variable is documented in [`.env.example`](.env.example). The key ones:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | (none) | Claude key (the default provider) |
+| `OPENAI_API_KEY` | (none) | OpenAI key (the fallback) |
+| `LLM_ACTIVE_PROVIDER` | `anthropic` | `anthropic` or `openai` |
+| `LLM_FALLBACK_PROVIDER` | `openai` | `openai`, `anthropic` or `none` |
+| `LLM_MAX_TOOL_ITERATIONS` | `8` | Model calls per patient message before a hand-off |
+| `ANTHROPIC_MODEL` | `claude-opus-5-5` | Also Sonnet 5.5, Haiku 5.5 and others |
+| `OPENAI_MODEL` | `gpt-6.1-sol` | Also `gpt-6-luna` for high volume, and others |
+| `ANTHROPIC_PROMPT_CACHE` | `5m` | `off`, `5m` or `1h` |
+| `ADMIN_TOKEN` | `change-me` | Required for `/staff` and `/admin/llm` (sent as `x-admin-token`) |
+| `PORT` / `WEB_ORIGIN` | `4000` / `http://localhost:3000` | API port and allowed CORS origins (comma-separated) |
+| `DB_PATH` | `data/smile-desk.db` | SQLite file, relative to `apps/api` |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Where the web app finds the API (inlined at build time) |
+
+**Live tuning without a restart.** `GET /admin/llm` shows every setting with its source (default, env or override). `PUT /admin/llm` changes one, and `DELETE /admin/llm/{harness|anthropic|openai|all}` resets it. For example, to switch providers mid-demo:
+
+```bash
+curl -X PUT http://localhost:4000/admin/llm \
+  -H "x-admin-token: change-me" -H "content-type: application/json" \
+  -d '{"harness":{"activeProvider":"openai"}}'
+```
+
+## Deployment
+
+[`render.yaml`](render.yaml) is a Render Blueprint for both services. In the dashboard: **New → Blueprint →** pick the repo. Render asks for `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` on the first deploy, and generates `ADMIN_TOKEN` itself. Both services redeploy on every push to `main`. The API's health check is `/health`.
+
+Free-plan caveats, which are fine for a demo:
+
+- The disk is ephemeral, so **the demo database re-seeds on each deploy or restart**. Bookings made in the demo don't survive a redeploy.
+- Services sleep after 15 minutes idle, so the **first request takes about 30–60 s**.
+
+A paid instance with managed Postgres removes both.
+
+## Project structure
+
+```
+apps/
+  api/                          NestJS API
+    src/
+      conversation/             agent loop, 11 tools, system prompt, chat + SSE controller
+      llm/                      router (failover), settings (3 layers), anthropic/ and openai/ providers
+      scheduling/               slot search, back-to-back, book/reschedule/cancel, when.ts (dates)
+      patients/                 verification, registration, households and guardians
+      notifications/            staff alerts and the /staff/notifications API
+      practice/                 hours, appointment types, insurance and self-pay facts
+      database/                 SQLite schema and the self-seeding demo calendar
+    test/                       e2e tests
+  web/                          Next.js app
+    src/app/                    / (chat), /staff, /design-system
+    src/components/             design-system components (ui, chat, feedback, theme)
+    src/lib/                    API clients, SSE parser
+    src/styles/                 token tiers
+    test/                       SSE, reply-text, contrast and token-usage tests
+render.yaml                     Render Blueprint
+.github/workflows/ci.yml        CI
+```
+
+## Tech stack
+
+| Layer | Choice |
+| --- | --- |
+| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS 4 |
+| Backend | Node 22+, NestJS 12, Zod 4, Luxon |
+| LLM | Anthropic Messages API (`@anthropic-ai/sdk`), OpenAI Responses API (`openai`) |
+| Data | SQLite via better-sqlite3 (WAL), raw SQL behind services |
+| Streaming | Server-Sent Events over `POST` |
+| Tests | Vitest + Supertest (API), `node:test` (web) |
+| Tooling | npm workspaces, oxlint, ESLint, TypeScript, GitHub Actions |
+| Hosting | Render (Blueprint) |
+
+## Built with AI assistance
+
+The brief allows it, and I used it: AI coding assistants helped write and review code, tests and docs. I made the architecture, scope and design calls, and I verified every flow against the real models.
