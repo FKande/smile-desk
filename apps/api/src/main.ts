@@ -9,7 +9,9 @@ for (const file of ['../../.env', '.env']) {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000' });
+  // WEB_ORIGIN may list several origins, comma-separated (e.g. production + a preview URL).
+  const origins = (process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',').map((o) => o.trim().replace(/\/$/, ''));
+  app.enableCors({ origin: origins });
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 4000);
 }
