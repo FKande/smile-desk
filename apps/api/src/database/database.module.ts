@@ -1,7 +1,7 @@
 import { Global, Inject, Logger, Module, OnApplicationShutdown } from '@nestjs/common';
 import { CLOCK, type Clock, systemClock } from '../common/clock.js';
 import { DB, type Db, openDatabase } from './database.js';
-import { isSeeded, seed } from './seed.js';
+import { isSeeded, seed, topUp } from './seed.js';
 
 @Global()
 @Module({
@@ -18,6 +18,13 @@ import { isSeeded, seed } from './seed.js';
           seed(db, clock.now());
           logger.log(`Seeded demo practice data into ${path}`);
         }
+        // Every boot: roll the demo calendar forward and add any new demo patients.
+        // Insert-only by stable id, so real conversations and bookings are never touched.
+        const added = topUp(db, clock.now());
+        logger.log(
+          `Demo data top-up: +${added.patients} patients, +${added.slots} slots ` +
+            `(+${added.bookings} filler bookings), +${added.pastVisits} past visits`,
+        );
         return db;
       },
     },

@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { type Clock, fixedClock } from '../common/clock.js';
 import { type Db, openDatabase } from '../database/database.js';
-import { seed } from '../database/seed.js';
+import { seed, topUp } from '../database/seed.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PatientsService } from '../patients/patients.service.js';
 import { PRACTICE } from '../practice/practice.js';
@@ -21,6 +21,7 @@ export interface TestContext {
 export function createTestContext(now: DateTime = TEST_NOW): TestContext {
   const db = openDatabase(':memory:');
   seed(db, now);
+  topUp(db, now); // as on every boot: the wider demo roster and past visits
   const clock = fixedClock(now);
   const patients = new PatientsService(db, clock);
   const scheduling = new SchedulingService(db, clock, patients);
