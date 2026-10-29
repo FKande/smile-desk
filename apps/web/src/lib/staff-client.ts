@@ -21,6 +21,22 @@ export type StaffNotification = {
   createdAt: string;
 };
 
+export type FeedbackRating = 1 | -1;
+
+/** One patient rating of a conversation (apps/api: FeedbackService). */
+export type FeedbackEntry = {
+  id: string;
+  conversationId: string;
+  rating: FeedbackRating;
+  comment: string | null;
+  /** UTC ISO timestamp. */
+  createdAt: string;
+  /** Null unless the patient verified their identity in that chat. */
+  patientName: string | null;
+  /** The patient's first message, trimmed to about 140 characters. */
+  excerpt: string;
+};
+
 /** status is the HTTP status, or null when the request never got an answer. */
 export class StaffApiError extends Error {
   constructor(
@@ -55,4 +71,10 @@ export function acknowledgeNotification(id: string) {
   return request<StaffNotification>(`/staff/notifications/${encodeURIComponent(id)}/acknowledge`, {
     method: "POST",
   });
+}
+
+/** The 50 most recent ratings, newest first. Omit rating for both kinds. */
+export function listFeedback(rating?: FeedbackRating, signal?: AbortSignal) {
+  const query = rating ? `?rating=${rating}` : "";
+  return request<FeedbackEntry[]>(`/staff/feedback${query}`, { signal });
 }
