@@ -138,7 +138,7 @@ Live testing added a 30-minute minimum lead time, no patient in two chairs at on
 | Prompt injection | Declined; identity and permissions enforced in code |
 
 **Cost:** about 8 model calls per conversation, each reading ~7k cached tokens (Opus 5.5 cache reads ≈ 5% of input price) and writing 200–300 output tokens.
-Claude Opus 5.5 ≈ $0.05–0.06 per conversation (~$500–600/day at 10k); Sonnet 5.5 ≈ half; Haiku 5.5 ≈ $0.002 (~$20/day).
+Claude Opus 5.5 ≈ $0.05–0.06 per conversation (about $500–600 a day at 10k); Sonnet 5.5 ≈ half; Haiku 5.5 ≈ $0.002 (about $20 a day).
 Levers: caching (done), effort/verbosity settings, the cheapest model that passes evals, routing FAQ turns to a cheap model.
 
 ## Testing
