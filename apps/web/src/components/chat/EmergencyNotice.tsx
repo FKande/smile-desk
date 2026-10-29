@@ -28,7 +28,7 @@ export function EmergencyNotice({
   summary,
   notifiedAt,
   phone = "(555) 010-2400",
-  practiceName = "Bright Smile Dental",
+  practiceName = "Smile Desk Dental",
   className,
   ...rest
 }: EmergencyNoticeProps) {

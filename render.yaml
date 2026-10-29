@@ -1,6 +1,6 @@
 # Render Blueprint for the API. The web app is deployed on Vercel (see README → Deployment).
 # Dashboard → New → Blueprint → pick this repo. Render asks for the values marked
-# `sync: false` (the API keys) on first deploy; everything else is set here.
+# `sync: false` (the API keys and WEB_ORIGIN) on first deploy; everything else is set here.
 # Redeploys automatically on every push to main.
 
 services:

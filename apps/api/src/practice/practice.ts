@@ -27,9 +27,6 @@ export const APPOINTMENT_TYPES = {
 
 export type AppointmentType = keyof typeof APPOINTMENT_TYPES;
 
-export const isAppointmentType = (value: string): value is AppointmentType =>
-  value in APPOINTMENT_TYPES;
-
 export const PRACTICE = {
   locationId: 'loc_sf_market',
   name: 'Smile Desk Dental',

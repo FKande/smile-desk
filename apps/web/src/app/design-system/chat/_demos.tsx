@@ -102,7 +102,7 @@ export function ConversationDemo() {
       <MessageList scrollToEndKey={extra.length}>
         <DateDivider>Today</DateDivider>
         <MessageBubble sender="assistant" position="first" animate={false}>
-          Hi, I&apos;m Smile Desk, the assistant for Bright Smile Dental. I can book, move or cancel a visit, or answer
+          Hi, I&apos;m Maya, the assistant for Smile Desk Dental. I can book, move or cancel a visit, or answer
           questions about insurance and hours.
         </MessageBubble>
         <MessageBubble
@@ -507,7 +507,7 @@ export function NoticesDemo() {
         <StaffNotice meta="During office hours, usually within 15 minutes.">
           I&apos;ve passed your question about payment plans to our front desk. They&apos;ll call you at (555) 284-1937.
         </StaffNotice>
-        <StaffNotice icon="bell" title="You're now chatting with Dana" meta="Front desk, Bright Smile Dental">
+        <StaffNotice icon="bell" title="You're now chatting with Dana" meta="Front desk, Smile Desk Dental">
           Dana has the conversation so far, so there&apos;s no need to repeat anything.
         </StaffNotice>
       </div>

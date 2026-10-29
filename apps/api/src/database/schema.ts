@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS turn_outcomes (
 );
 CREATE INDEX IF NOT EXISTS turn_outcomes_conversation ON turn_outcomes (conversation_id);
 
--- Runtime settings changed from the settings UI (e.g. LLM provider and model knobs).
+-- Runtime settings saved through PUT /admin/llm (e.g. LLM provider and model knobs).
 CREATE TABLE IF NOT EXISTS settings (
   key        TEXT PRIMARY KEY,
   value      TEXT NOT NULL,                  -- JSON
