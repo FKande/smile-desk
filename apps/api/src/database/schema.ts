@@ -99,6 +99,13 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS messages_conversation ON messages (conversation_id, created_at);
 
+-- Runtime settings changed from the settings UI (e.g. LLM provider and model knobs).
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,                  -- JSON
+  updated_at TEXT NOT NULL
+);
+
 -- Feedback loop: patient ratings tied to the exact conversation that earned them.
 CREATE TABLE IF NOT EXISTS feedback (
   id              TEXT PRIMARY KEY,
